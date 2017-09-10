@@ -132,6 +132,11 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 	},
 #endif
 	{
+		.btns = {
+			{ GPIOF, GPIO_Pin_6, 12},  /* Y */
+			{ GPIOC, GPIO_Pin_8, 13 },  /* B */
+			{ GPIOC, GPIO_Pin_9, 15 }, /* A */
+		},
 		.report = trackball_report,
 	}
 };
@@ -185,6 +190,9 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 	int8_t tmp, btn_state = 0;
 	int i;
 
+	if (gpcfg->report[4])
+		return;
+
 	for (i = 0; i < 8; i++) {
 		tmp = gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
 		btn_state |= tmp;
@@ -200,31 +208,37 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
 }
 
-void trackball_update(void)
+void trackball_update(const struct gamepad_cfg *gpcfg)
 {
 	static int16_t lastx = 0, lasty = 0;
 	int16_t value;
+	int8_t btn_state = 0;
+	int i;
+
+	if (gpcfg->report[4])
+		return;
 
 	value = TIM_GetCounter(TIM3);
-	if (lastx != value) {
-		STM_EVAL_LEDOn(LED3);
-		trackball_report[2] = value - lastx;
-		trackball_report[4] = 1;
-		lastx = value;
-	}
+	gpcfg->report[2] = -(value - lastx);
+	lastx = value;
+
 	value = TIM_GetCounter(TIM4);
-	if (lasty != value) {
-		STM_EVAL_LEDOn(LED4);
-		trackball_report[3] = value - lasty;
-		trackball_report[4] = 1;
-		lasty = value;
+	gpcfg->report[3] = value - lasty;
+	lasty = value;
+
+	for (i = 0; i < 3; i++)
+		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
+	gamepad_update_single(gpcfg, 1, btn_state);
+
+	if (gpcfg->report[2] || gpcfg->report[3]) {
+		STM_EVAL_LEDOn(LED3);
+		gpcfg->report[4] = 1;
 	}
 }
 
 void encoder_init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure = {
-		.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7,
 		.GPIO_Speed = GPIO_Speed_50MHz,
 		.GPIO_Mode = GPIO_Mode_AF,
 		.GPIO_OType = GPIO_OType_PP,
@@ -232,11 +246,11 @@ void encoder_init(void)
 	};
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 
-	/* Connect PB{4,5} pins to TIM3_CH{1,2} */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource4, GPIO_AF_2);
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_2);
+	/* Connect PC{6,7} pins to TIM3_CH{1,2} */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_2);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_2);
 
 	/* Connect PD{12,13} pins to TIM4_CH{1,2} */
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
@@ -351,7 +365,7 @@ int main(void)
     }
 
     if (current_gamepad == 4)
-      trackball_update();
+      trackball_update(&gamepads[current_gamepad]);
 
     if (gamepads[current_gamepad].report[4]) {
       gamepads[current_gamepad].report[4] = 0;
