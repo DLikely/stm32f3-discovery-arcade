@@ -137,7 +137,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.btns = {
 			{ GPIOE, GPIO_Pin_7, PLR3_LED_NUM+1 }, /* A */
 			{ GPIOB, GPIO_Pin_1, PLR3_LED_NUM+3 },  /* B */
-			{ GPIOA, GPIO_Pin_10, PLR3_LED_NUM+2 },  /* X */
+			{ GPIOA, GPIO_Pin_10,PLR3_LED_NUM+2 },  /* X */
 			{ GPIOF, GPIO_Pin_4, PLR3_LED_NUM+5 },  /* Y */
 			{ GPIOC, GPIO_Pin_3, PLR3_LED_NUM+4 },  /* L */
 			{ GPIOC, GPIO_Pin_1, PLR3_LED_NUM   }, /* R */
