@@ -191,9 +191,9 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 
 		/* This is an ugly hack to get red for P1, and blue for P2. To be fixed */
 		if (gpcfg->btns[i].led > 8)
-			led_buffer[gpcfg->btns[i].led-1][2] = tmp ? 0x1f : 0;
+			led_buffer[gpcfg->btns[i].led-1][2] = tmp ? 0:0xff;
 		else if (gpcfg->btns[i].led > 0)
-			led_buffer[gpcfg->btns[i].led-1][0] = tmp ? 0x1f : 0;
+			led_buffer[gpcfg->btns[i].led-1][0] = tmp ? 0:0xff;
 	}
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
