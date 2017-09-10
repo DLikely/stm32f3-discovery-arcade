@@ -1,0 +1,6 @@
+*.net
+*.pos
+*.zip
+*.bak
+*-bak
+~/gerbers

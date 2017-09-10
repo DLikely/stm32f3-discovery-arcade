@@ -1,0 +1,18 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP CONN_GAMEPAD
+D Connector, double row, 02x08, pin header
+K connector
+$ENDCMP
+#
+$CMP STM32F3DISCO_P1
+D Connector, double row, 02x25, pin header, STM32F3Discovery
+K connector, stm32f3
+$ENDCMP
+#
+$CMP STM32F3DISCO_P2
+D Connector, double row, 02x25, pin header, STM32F3Discovery
+K connector, stm32f3
+$ENDCMP
+#
+#End Doc Library
