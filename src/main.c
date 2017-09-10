@@ -84,20 +84,20 @@ struct gamepad_cfg {
 	int8_t *report;
 };
 
-const struct gamepad_cfg gamepads[4] = {
+const struct gamepad_cfg gamepads[NUM_JOYSTICKS] = {
 #if (NUM_JOYSTICKS >= 1)
 	{
 		.x = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_12 }},
-		.y = {{ GPIOC, GPIO_Pin_7 },{ GPIOD, GPIO_Pin_14 }},
+		.y = {{ GPIOD, GPIO_Pin_14 },{ GPIOC, GPIO_Pin_7 }},
 		.btns = {
-			{ GPIOD, GPIO_Pin_8 }, /* Select */
+			{ GPIOC, GPIO_Pin_11 }, /* A */
+			{ GPIOD, GPIO_Pin_2 },  /* B */
+			{ GPIOD, GPIO_Pin_0 },  /* X */
+			{ GPIOD, GPIO_Pin_6 },  /* Y */
+			{ GPIOD, GPIO_Pin_4 },  /* L */
+			{ GPIOA, GPIO_Pin_15 }, /* R */
+			{ GPIOD, GPIO_Pin_8 },  /* Select */
 			{ GPIOB, GPIO_Pin_14 }, /* Start */
-			{ GPIOA, GPIO_Pin_15 }, /* Y */
-			{ GPIOC, GPIO_Pin_11 }, /* L */
-			{ GPIOD, GPIO_Pin_0 }, /* B */
-			{ GPIOD, GPIO_Pin_2 }, /* X */
-			{ GPIOD, GPIO_Pin_4 }, /* A */
-			{ GPIOD, GPIO_Pin_6 }, /* R */
 		},
 		.report = gamepad1_report,
 	},
@@ -105,16 +105,16 @@ const struct gamepad_cfg gamepads[4] = {
 #if (NUM_JOYSTICKS >= 2)
 	{
 		.x = {{ GPIOC, GPIO_Pin_6 },{ GPIOD, GPIO_Pin_11 }},
-		.y = {{ GPIOD, GPIO_Pin_13 },{ GPIOD, GPIO_Pin_15 }},
+		.y = {{ GPIOD, GPIO_Pin_15 },{ GPIOD, GPIO_Pin_13 }},
 		.btns = {
-			{ GPIOD, GPIO_Pin_9 }, /* Select */
+			{ GPIOC, GPIO_Pin_12 }, /* A */
+			{ GPIOD, GPIO_Pin_3 },  /* B */
+			{ GPIOD, GPIO_Pin_1 },  /* X */
+			{ GPIOD, GPIO_Pin_7 },  /* Y */
+			{ GPIOD, GPIO_Pin_5 },  /* L */
+			{ GPIOC, GPIO_Pin_10 }, /* R */
+			{ GPIOD, GPIO_Pin_9 },  /* Select */
 			{ GPIOB, GPIO_Pin_15 }, /* Start */
-			{ GPIOC, GPIO_Pin_10 }, /* Y */
-			{ GPIOC, GPIO_Pin_12 }, /* L */
-			{ GPIOD, GPIO_Pin_1 }, /* B */
-			{ GPIOD, GPIO_Pin_3 }, /* X */
-			{ GPIOD, GPIO_Pin_5 }, /* A */
-			{ GPIOD, GPIO_Pin_7 }, /* R */
 		},
 		.report = gamepad2_report,
 	},
