@@ -31,10 +31,10 @@
 #define LED_PER_HALF 1
 
 static union {
-	uint8_t buffer[2*LED_PER_HALF*32];
+	uint8_t buffer[4*2*LED_PER_HALF*32];
 	struct {
-		uint8_t begin[LED_PER_HALF*32];
-		uint8_t end[LED_PER_HALF*32];
+		uint8_t begin[4*LED_PER_HALF*32];
+		uint8_t end[4*LED_PER_HALF*32];
 	} __attribute__((packed));
 } led_dma;
 
@@ -43,7 +43,7 @@ void ws2812_init(void)
 	uint16_t PrescalerValue = (uint16_t) (72000000 / 24000000) - 1;
 	/* GPIOA Configuration: TIM3 Channel 1 as alternate function push-pull */
 	GPIO_InitTypeDef GPIO_InitStructure = {
-		.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1,
+		.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3,
 		.GPIO_Mode = GPIO_Mode_AF,
 		.GPIO_OType = GPIO_OType_PP,
 		.GPIO_Speed = GPIO_Speed_50MHz,
@@ -63,7 +63,7 @@ void ws2812_init(void)
 	//	.TIM_OCNIdleState = TIM_OCNIdleState_Set,
 	};
 	DMA_InitTypeDef DMA_InitStructure = {
-		.DMA_PeripheralBaseAddr = (uint32_t)&TIM2->CCR1, //TIM2_CCR1_Address;	// physical address of Timer 2 CCR1
+		.DMA_PeripheralBaseAddr = (uint32_t)&TIM2->DMAR,
 		.DMA_MemoryBaseAddr = (uint32_t)led_dma.buffer,	// this is the buffer memory 
 		.DMA_DIR = DMA_DIR_PeripheralDST,		// data shifted from memory to peripheral
 		.DMA_BufferSize = sizeof(led_dma.buffer),
@@ -85,20 +85,25 @@ void ws2812_init(void)
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	//GPIO_PinRemapConfig(GPIO_PartialRemap_TIM2, ENABLE);
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource0, GPIO_AF_1);
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_1);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_1);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_1);
 
 	/* Compute the prescaler value */
 
 	/* Time base configuration */
 	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
-	/* PWM1 Mode configuration: Channel1 */
+	/* PWM Mode configuration: Channels 1-4 */
 	TIM_OC1Init(TIM2, &TIM_OCInitStructure);
 	TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
 	TIM_OC2Init(TIM2, &TIM_OCInitStructure);
 	TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Enable);
+	TIM_OC3Init(TIM2, &TIM_OCInitStructure);
+	TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Enable);
+	TIM_OC4Init(TIM2, &TIM_OCInitStructure);
+	TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Enable);
 	TIM_CtrlPWMOutputs(TIM2, ENABLE);           // enable Timer 1
 
 	/* configure DMA */
@@ -116,33 +121,45 @@ void ws2812_init(void)
 	DMA_ITConfig(DMA1_Channel5, DMA_IT_HT, ENABLE);
 
 	/* TIM2 CC1 DMA Request enable */
-	TIM_DMAConfig(TIM2, TIM_DMABase_CCR1, TIM_DMABurstLength_1Transfer);
+	TIM_DMAConfig(TIM2, TIM_DMABase_CCR1, TIM_DMABurstLength_4Transfers);
 	TIM_DMACmd(TIM2, TIM_DMA_CC1, ENABLE);
-
-	//vSemaphoreCreateBinary(allLedDone);
 }
 
 static void fillLed(uint8_t *buffer, uint8_t *color)
 {
 	int i;
 
-	for(i=0; i<8; i++) // GREEN data
-		buffer[i] = ((color[1]<<i) & 0x80)?17:9;
-	for(i=0; i<8; i++) // RED
-		buffer[8+i] = ((color[0]<<i) & 0x80)?17:9;
-	for(i=0; i<8; i++) // BLUE
-		buffer[16+i] = ((color[2]<<i) & 0x80)?17:9;
-	for(i=0; i<8; i++) // WHITE
-		buffer[24+i] = ((color[3]<<i) & 0x80)?17:9;
+	for(i=0; i<8; i++, buffer+=4) // GREEN data
+		*buffer = ((color[1]<<i) & 0x80)?17:9;
+	for(i=0; i<8; i++, buffer+=4) // RED
+		*buffer = ((color[0]<<i) & 0x80)?17:9;
+	for(i=0; i<8; i++, buffer+=4) // BLUE
+		*buffer = ((color[2]<<i) & 0x80)?17:9;
+	for(i=0; i<8; i++, buffer+=4) // WHITE
+		*buffer = ((color[3]<<i) & 0x80)?17:9;
 }
 
 static int current_led = 0;
 static int total_led = 0;
 static uint8_t (*color_led)[4] = NULL;
 
-void ws2812_send(uint8_t (*color)[4], int len)
+static void fillLeds(uint8_t *buffer)
 {
 	int i;
+
+	memset(buffer, 0, 32*4);
+	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++, buffer+=32*4) {
+		if (current_led<total_led) {
+			fillLed(&buffer[0], color_led[current_led]);
+			fillLed(&buffer[1], color_led[current_led+total_led]);
+			fillLed(&buffer[2], color_led[current_led+total_led*2]);
+			fillLed(&buffer[3], color_led[current_led+total_led*3]);
+		}
+	}
+}
+
+void ws2812_send(uint8_t (*color)[4], int len)
+{
 	if(len<1)
 		return;
 
@@ -154,30 +171,20 @@ void ws2812_send(uint8_t (*color)[4], int len)
 	total_led = len;
 	color_led = color;
 
-	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++) {
-		if (current_led<total_led)
-			fillLed(led_dma.begin+(32*i), color_led[current_led]);
-		else
-			memset(led_dma.begin+(32*i), 0, 32);
-	}
+	/* Preload both buffers with data */
+	fillLeds(led_dma.begin);
+	fillLeds(led_dma.end);
 
-	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++) {
-		if (current_led<total_led)
-			fillLed(led_dma.end+(32*i), color_led[current_led]);
-		else
-			memset(led_dma.end+(32*i), 0, 32);
-	}
-
-	DMA1_Channel5->CNDTR = sizeof(led_dma.buffer); // load number of bytes to be transferred
-	DMA_Cmd(DMA1_Channel5, ENABLE); 			// enable DMA channel 6
-	TIM_Cmd(TIM2, ENABLE);                      // Go!!!
+	// load number of bytes to be transferred, enable the DMA channel
+	// and Go!
+	DMA1_Channel5->CNDTR = sizeof(led_dma.buffer);
+	DMA_Cmd(DMA1_Channel5, ENABLE);
+	TIM_Cmd(TIM2, ENABLE);
 }
 
 void DMA1_Channel5_IRQHandler(void)
 {
-	//portBASE_TYPE xHigherPriorityTaskWoken;
 	uint8_t * buffer;
-	int i;
 
 	if (total_led == 0)
 	{
@@ -197,12 +204,7 @@ void DMA1_Channel5_IRQHandler(void)
 		buffer = led_dma.end;
 	}
 
-	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++) {
-		if (current_led<total_led)
-			fillLed(buffer+(32*i), color_led[current_led]);
-		else
-			memset(buffer+(32*i), 0, 32);
-	}
+	fillLeds(buffer);
 
 	if (current_led >= total_led+2) {
 		TIM_Cmd(TIM2, DISABLE);			// disable Timer 1
