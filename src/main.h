@@ -52,6 +52,9 @@ void USB_Config (void);
 void Acc_Config(void);
 void Acc_ReadData(float* pfData);
 
+void ws2812_init(void);
+void ws2812_send(uint8_t (*color)[3], int len);
+
 #endif /* __MAIN_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

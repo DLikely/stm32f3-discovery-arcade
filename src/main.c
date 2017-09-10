@@ -76,6 +76,7 @@ static int8_t trackball_report[5] = {5,0,0,0,0};
 struct gpio {
 	GPIO_TypeDef* port;
 	uint16_t pin;
+	uint8_t led;
 };
 
 struct gamepad_cfg {
@@ -91,14 +92,14 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.x = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_8 }},
 		.y = {{ GPIOB, GPIO_Pin_14 },{ GPIOB, GPIO_Pin_12 }},
 		.btns = {
-			{ GPIOC, GPIO_Pin_11 }, /* A */
-			{ GPIOD, GPIO_Pin_2 },  /* B */
-			{ GPIOD, GPIO_Pin_0 },  /* X */
-			{ GPIOD, GPIO_Pin_6 },  /* Y */
-			{ GPIOD, GPIO_Pin_4 },  /* L */
-			{ GPIOA, GPIO_Pin_15 }, /* R */
-			{ GPIOD, GPIO_Pin_8 },  /* Select */
-			{ GPIOB, GPIO_Pin_14 }, /* Start */
+			{ GPIOC, GPIO_Pin_11, 5 }, /* A */
+			{ GPIOD, GPIO_Pin_2, 3 },  /* B */
+			{ GPIOD, GPIO_Pin_0, 4 },  /* X */
+			{ GPIOD, GPIO_Pin_6, 1 },  /* Y */
+			{ GPIOD, GPIO_Pin_4, 2 },  /* L */
+			{ GPIOA, GPIO_Pin_15, 6 }, /* R */
+			{ GPIOC, GPIO_Pin_7, 7 },  /* Select */
+			{ GPIOD, GPIO_Pin_14, 8 }, /* Start */
 		},
 		.report = gamepad1_report,
 	},
@@ -108,14 +109,14 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.x = {{ GPIOB, GPIO_Pin_13 },{ GPIOD, GPIO_Pin_11 }},
 		.y = {{ GPIOB, GPIO_Pin_15 },{ GPIOD, GPIO_Pin_9 }},
 		.btns = {
-			{ GPIOC, GPIO_Pin_12 }, /* A */
-			{ GPIOD, GPIO_Pin_3 },  /* B */
-			{ GPIOD, GPIO_Pin_1 },  /* X */
-			{ GPIOD, GPIO_Pin_7 },  /* Y */
-			{ GPIOD, GPIO_Pin_5 },  /* L */
-			{ GPIOC, GPIO_Pin_10 }, /* R */
-			{ GPIOD, GPIO_Pin_9 },  /* Select */
-			{ GPIOB, GPIO_Pin_15 }, /* Start */
+			{ GPIOC, GPIO_Pin_12, 15 }, /* A */
+			{ GPIOD, GPIO_Pin_3, 13 },  /* B */
+			{ GPIOD, GPIO_Pin_1, 14 },  /* X */
+			{ GPIOD, GPIO_Pin_7, 12},  /* Y */
+			{ GPIOD, GPIO_Pin_5, 11 },  /* L */
+			{ GPIOC, GPIO_Pin_10, 16 }, /* R */
+			{ GPIOC, GPIO_Pin_6, 9 },  /* Select */
+			{ GPIOD, GPIO_Pin_15, 10 }, /* Start */
 		},
 		.report = gamepad2_report,
 	},
@@ -134,6 +135,8 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.report = trackball_report,
 	}
 };
+
+uint8_t led_buffer[8*4][3];
 
 void gpio_init_input(const struct gpio *gpio)
 {
@@ -179,11 +182,19 @@ void gamepad_update_single(const struct gamepad_cfg *gpcfg, int idx, int8_t valu
 
 void gamepad_update(const struct gamepad_cfg *gpcfg)
 {
-	int8_t btn_state = 0;
+	int8_t tmp, btn_state = 0;
 	int i;
 
-	for (i = 0; i < 8; i++)
-		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
+	for (i = 0; i < 8; i++) {
+		tmp = gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
+		btn_state |= tmp;
+
+		/* This is an ugly hack to get red for P1, and blue for P2. To be fixed */
+		if (gpcfg->btns[i].led > 8)
+			led_buffer[gpcfg->btns[i].led-1][2] = tmp ? 0x1f : 0;
+		else if (gpcfg->btns[i].led > 0)
+			led_buffer[gpcfg->btns[i].led-1][0] = tmp ? 0x1f : 0;
+	}
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
 	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
@@ -252,6 +263,7 @@ void encoder_init(void)
 int main(void)
 {
   int i = 0;
+  int cindex = 0;
   int current_gamepad = 0;
 
   /* SysTick end of count event each 10ms */
@@ -282,6 +294,12 @@ int main(void)
   for (i = 0; i < NUM_JOYSTICKS; i++)
     gamepad_init(&gamepads[i]);
   encoder_init();
+  ws2812_init();
+
+  ws2812_send(&led_buffer[10], 16);
+  while(DataReady !=0x02)
+  {}
+  DataReady = 0x00;
 
   /* Configure the USB */
   USB_Config();
@@ -302,6 +320,8 @@ int main(void)
     {}
     DataReady = 0x00;
 
+    /* Kick off an LED transfer */
+    led_buffer[7][2] = cindex++ >> 1;
 
     for (i = 0; i < 8; i++)
       STM_EVAL_LEDOff(i);
@@ -351,6 +371,7 @@ int main(void)
     for(i=0;i<3;i++)
       AccBuffer[i] /= 100.0f;
 
+    ws2812_send(led_buffer, 16);
   }
 }
 
