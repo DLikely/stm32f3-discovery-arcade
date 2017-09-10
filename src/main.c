@@ -86,48 +86,77 @@ struct gamepad_cfg {
 	int8_t *report;
 };
 
+#define PLR1_LED_NUM 1
+#define PLR2_LED_NUM 33
+#define PLR3_LED_NUM PLR1_LED_NUM+6
+#define PLR4_LED_NUM PLR2_LED_NUM+6
+
 const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 1)
 	{
-		.x = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_8 }},
-		.y = {{ GPIOB, GPIO_Pin_14 },{ GPIOB, GPIO_Pin_12 }},
+		.x = {{ GPIOB, GPIO_Pin_12 },{ GPIOB, GPIO_Pin_14 },},
+		.y = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_8 }, },
 		.btns = {
-			{ GPIOC, GPIO_Pin_11, 5 }, /* A */
-			{ GPIOD, GPIO_Pin_2, 3 },  /* B */
-			{ GPIOD, GPIO_Pin_0, 4 },  /* X */
-			{ GPIOD, GPIO_Pin_6, 1 },  /* Y */
-			{ GPIOD, GPIO_Pin_4, 2 },  /* L */
-			{ GPIOA, GPIO_Pin_15, 6 }, /* R */
-			{ GPIOC, GPIO_Pin_7, 7 },  /* Select */
-			{ GPIOD, GPIO_Pin_14, 8 }, /* Start */
+			{ GPIOD, GPIO_Pin_11, PLR1_LED_NUM+1 }, /* A */
+			{ GPIOD, GPIO_Pin_9,  PLR1_LED_NUM+3 },  /* B */
+			{ GPIOB, GPIO_Pin_15, PLR1_LED_NUM+2 },  /* X */
+			{ GPIOB, GPIO_Pin_13, PLR1_LED_NUM+5 },  /* Y */
+			{ GPIOB, GPIO_Pin_11, PLR1_LED_NUM+4 },  /* L */
+			{ GPIOB, GPIO_Pin_10, PLR1_LED_NUM }, /* R */
+			{ GPIOD, GPIO_Pin_15, PLR1_LED_NUM+8+6 },  /* Select */
+			{ GPIOD, GPIO_Pin_14, PLR1_LED_NUM+8+7 }, /* Start */
 		},
 		.report = gamepad1_report,
 	},
 #endif
 #if (NUM_JOYSTICKS >= 2)
 	{
-		.x = {{ GPIOB, GPIO_Pin_13 },{ GPIOD, GPIO_Pin_11 }},
-		.y = {{ GPIOB, GPIO_Pin_15 },{ GPIOD, GPIO_Pin_9 }},
+		.x = {{ GPIOD, GPIO_Pin_2 },{ GPIOD, GPIO_Pin_0 }},
+		.y = {{ GPIOA, GPIO_Pin_15 },{ GPIOC, GPIO_Pin_11 }},
 		.btns = {
-			{ GPIOC, GPIO_Pin_12, 15 }, /* A */
-			{ GPIOD, GPIO_Pin_3, 13 },  /* B */
-			{ GPIOD, GPIO_Pin_1, 14 },  /* X */
-			{ GPIOD, GPIO_Pin_7, 12},  /* Y */
-			{ GPIOD, GPIO_Pin_5, 11 },  /* L */
-			{ GPIOC, GPIO_Pin_10, 16 }, /* R */
-			{ GPIOC, GPIO_Pin_6, 9 },  /* Select */
-			{ GPIOD, GPIO_Pin_15, 10 }, /* Start */
+			{ GPIOC, GPIO_Pin_9, PLR2_LED_NUM+4 }, /* A */
+			{ GPIOC, GPIO_Pin_8, PLR2_LED_NUM+2 },  /* B */
+			{ GPIOA, GPIO_Pin_8, PLR2_LED_NUM+3 },  /* X */
+			{ GPIOF, GPIO_Pin_6, PLR2_LED_NUM+5 },  /* Y */
+			{ GPIOC, GPIO_Pin_10,PLR2_LED_NUM+1 },  /* L */
+			{ GPIOC, GPIO_Pin_12,PLR2_LED_NUM   }, /* R */
+			{ GPIOD, GPIO_Pin_4, PLR2_LED_NUM+8+7 },  /* Select */
+			{ GPIOD, GPIO_Pin_6, PLR2_LED_NUM+8+6 }, /* Start */
 		},
 		.report = gamepad2_report,
 	},
 #endif
 #if (NUM_JOYSTICKS >= 3)
 	{
+		.x = {{ GPIOF, GPIO_Pin_2 },{ GPIOA, GPIO_Pin_4 },},
+		.y = {{ GPIOB, GPIO_Pin_0 },{ GPIOA, GPIO_Pin_9 },},
+		.btns = {
+			{ GPIOE, GPIO_Pin_7, PLR3_LED_NUM+1 }, /* A */
+			{ GPIOB, GPIO_Pin_1, PLR3_LED_NUM+3 },  /* B */
+			{ GPIOA, GPIO_Pin_10, PLR3_LED_NUM+2 },  /* X */
+			{ GPIOF, GPIO_Pin_4, PLR3_LED_NUM+5 },  /* Y */
+			{ GPIOC, GPIO_Pin_3, PLR3_LED_NUM+4 },  /* L */
+			{ GPIOC, GPIO_Pin_1, PLR3_LED_NUM   }, /* R */
+			{ GPIOC, GPIO_Pin_2, PLR3_LED_NUM+6 },  /* Select */
+			{ GPIOC, GPIO_Pin_0, PLR3_LED_NUM+7 }, /* Start */
+		},
 		.report = gamepad3_report,
 	},
 #endif
-#if (NUM_JOYSTICKS >= 2)
+#if (NUM_JOYSTICKS >= 4)
 	{
+		.x = {{ GPIOF, GPIO_Pin_10 },{ GPIOC, GPIO_Pin_13 },},
+		.y = {{ GPIOB, GPIO_Pin_5 }, { GPIOB, GPIO_Pin_9 }, },
+		.btns = {
+			{ GPIOD, GPIO_Pin_1, PLR4_LED_NUM+4 }, /* A */
+			{ GPIOD, GPIO_Pin_3, PLR4_LED_NUM+2 },  /* B */
+			{ GPIOD, GPIO_Pin_5, PLR4_LED_NUM+3 },  /* X */
+			{ GPIOD, GPIO_Pin_7, PLR4_LED_NUM+5 },  /* Y */
+			{ GPIOB, GPIO_Pin_4, PLR4_LED_NUM+1 },  /* L */
+			{ GPIOB, GPIO_Pin_8, PLR4_LED_NUM   }, /* R */
+			{ GPIOF, GPIO_Pin_9, PLR4_LED_NUM+7 },  /* Select */
+			{ GPIOE, GPIO_Pin_6, PLR4_LED_NUM+6 }, /* Start */
+		},
 		.report = gamepad4_report,
 	},
 #endif
@@ -141,7 +170,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 	}
 };
 
-uint8_t led_buffer[8*4][3];
+uint8_t led_buffer[32*4][4];
 
 void gpio_init_input(const struct gpio *gpio)
 {
@@ -287,6 +316,7 @@ int main(void)
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOD, ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
   SysTick_Config(RCC_Clocks.HCLK_Frequency / 500);

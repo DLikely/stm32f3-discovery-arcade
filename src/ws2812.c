@@ -136,9 +136,9 @@ static void fillLed(uint8_t *buffer, uint8_t *color)
 
 static int current_led = 0;
 static int total_led = 0;
-static uint8_t (*color_led)[3] = NULL;
+static uint8_t (*color_led)[4] = NULL;
 
-void ws2812_send(uint8_t (*color)[3], int len)
+void ws2812_send(uint8_t (*color)[4], int len)
 {
 	int i;
 	if(len<1)
