@@ -258,7 +258,7 @@ void trackball_update(const struct gamepad_cfg *gpcfg)
 		return;
 
 	value = TIM_GetCounter(TIM3);
-	gpcfg->report[2] = -(value - lastx);
+	gpcfg->report[2] = value - lastx;
 	lastx = value;
 
 	value = TIM_GetCounter(TIM4);
