@@ -55,29 +55,175 @@ float  AccBuffer[3] = {0.0f};
 
 __IO uint8_t DataReady = 0;
 __IO uint8_t PrevXferComplete = 1;
-uint8_t *Mouse_Buffer;
 
-/* Private function prototypes -----------------------------------------------*/
-static uint8_t *USBD_HID_GetPos (void);
-/* Private functions ---------------------------------------------------------*/
+/* Input report buffers */
+/* Report ID, Buttons, X, Y, change_flag */
+#if (NUM_JOYSTICKS >= 1)
+static int8_t gamepad1_report[5] = {1,0,0,0,0};
+#endif
+#if (NUM_JOYSTICKS >= 2)
+static int8_t gamepad2_report[5] = {2,0,0,0,0};
+#endif
+#if (NUM_JOYSTICKS >= 3)
+static int8_t gamepad3_report[5] = {3,0,0,0,0};
+#endif
+#if (NUM_JOYSTICKS >= 4)
+static int8_t gamepad4_report[5] = {4,0,0,0,0};
+#endif
 
-/**
-  * @brief  Main program.
-  * @param  None
-  * @retval None
-  */
+/* Gamepad GPIO defintions */
+struct gpio {
+	GPIO_TypeDef* port;
+	uint16_t pin;
+};
+
+struct gamepad_cfg {
+	struct gpio x[2];
+	struct gpio y[2];
+	struct gpio btns[8];
+	int8_t *report;
+};
+
+const struct gamepad_cfg gamepads[4] = {
+#if (NUM_JOYSTICKS >= 1)
+	{
+		.x = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_12 }},
+		.y = {{ GPIOC, GPIO_Pin_7 },{ GPIOD, GPIO_Pin_14 }},
+		.btns = {
+			{ GPIOD, GPIO_Pin_8 }, /* Select */
+			{ GPIOB, GPIO_Pin_14 }, /* Start */
+			{ GPIOA, GPIO_Pin_15 }, /* Y */
+			{ GPIOC, GPIO_Pin_11 }, /* L */
+			{ GPIOD, GPIO_Pin_0 }, /* B */
+			{ GPIOD, GPIO_Pin_2 }, /* X */
+			{ GPIOD, GPIO_Pin_4 }, /* A */
+			{ GPIOD, GPIO_Pin_6 }, /* R */
+		},
+		.report = gamepad1_report,
+	},
+#endif
+#if (NUM_JOYSTICKS >= 2)
+	{
+		.x = {{ GPIOC, GPIO_Pin_6 },{ GPIOD, GPIO_Pin_11 }},
+		.y = {{ GPIOD, GPIO_Pin_13 },{ GPIOD, GPIO_Pin_15 }},
+		.btns = {
+			{ GPIOD, GPIO_Pin_9 }, /* Select */
+			{ GPIOB, GPIO_Pin_15 }, /* Start */
+			{ GPIOC, GPIO_Pin_10 }, /* Y */
+			{ GPIOC, GPIO_Pin_12 }, /* L */
+			{ GPIOD, GPIO_Pin_1 }, /* B */
+			{ GPIOD, GPIO_Pin_3 }, /* X */
+			{ GPIOD, GPIO_Pin_5 }, /* A */
+			{ GPIOD, GPIO_Pin_7 }, /* R */
+		},
+		.report = gamepad2_report,
+	},
+#endif
+#if (NUM_JOYSTICKS >= 3)
+	{
+		.report = gamepad3_report,
+	},
+#endif
+#if (NUM_JOYSTICKS >= 2)
+	{
+		.report = gamepad4_report,
+	},
+#endif
+};
+
+void gpio_init_input(const struct gpio *gpio)
+{
+	GPIO_InitTypeDef GPIO_InitStructure = {
+		.GPIO_Pin = gpio->pin,
+		.GPIO_Mode = GPIO_Mode_IN,
+		.GPIO_PuPd = GPIO_PuPd_UP,
+	};
+	if (gpio->port)
+		GPIO_Init(gpio->port, &GPIO_InitStructure);
+}
+
+bool gpio_read(const struct gpio *gpio)
+{
+	return gpio->port ? GPIO_ReadInputDataBit(gpio->port, gpio->pin) : 0;
+}
+
+void gamepad_init(const struct gamepad_cfg *gpcfg)
+{
+	int i;
+	for (i=0; i < 2; i++)
+		gpio_init_input(&gpcfg->x[i]);
+	for (i=0; i < 2; i++)
+		gpio_init_input(&gpcfg->y[i]);
+	for (i=0; i < 8; i++)
+		gpio_init_input(&gpcfg->btns[i]);
+}
+
+int8_t gamepad_read_axis(const struct gpio *axis)
+{
+	bool n = gpio_read(&axis[0]);
+	bool p = gpio_read(&axis[1]);
+	return (n ? 0 : 0x81) + (p ? 0 : 0x7f);
+}
+
+void gamepad_update_single(const struct gamepad_cfg *gpcfg, int idx, int8_t value)
+{
+	if (value != gpcfg->report[idx]) {
+		gpcfg->report[idx] = value;
+		gpcfg->report[4] = 1;
+	}
+}
+
+void gamepad_update(const struct gamepad_cfg *gpcfg)
+{
+	int8_t btn_state = 0;
+	int i;
+
+	for (i = 0; i < 8; i++)
+		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
+	gamepad_update_single(gpcfg, 1, btn_state);
+	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
+	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
+}
+
 int main(void)
 {
-  uint8_t i = 0;
+  int i = 0;
+  int current_gamepad = 0;
+
   /* SysTick end of count event each 10ms */
   RCC_GetClocksFreq(&RCC_Clocks);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOD, ENABLE);
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE);
   SysTick_Config(RCC_Clocks.HCLK_Frequency / 100);
+
+  /* Initialize LEDs and User Button available on STM32F3-Discovery board */
+  STM_EVAL_LEDInit(LED3);
+  STM_EVAL_LEDInit(LED4);
+  STM_EVAL_LEDInit(LED5);
+  STM_EVAL_LEDInit(LED6);
+  STM_EVAL_LEDInit(LED7);
+  STM_EVAL_LEDInit(LED8);
+  STM_EVAL_LEDInit(LED9);
+  STM_EVAL_LEDInit(LED10);
+  STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
+
+  STM_EVAL_LEDOn(LED3);
 
   /* Configure the USB */
   USB_Config();
+  STM_EVAL_LEDOn(LED4);
 
   /* Accelerometer Configuration */
   Acc_Config();
+  STM_EVAL_LEDOn(LED5);
+
+  for (i = 0; i < NUM_JOYSTICKS; i++)
+    gamepad_init(&gamepads[i]);
+
+  STM_EVAL_LEDOn(LED6);
 
   /* Infinite loop */
   while (1)
@@ -88,26 +234,52 @@ int main(void)
     {}
     DataReady = 0x00;
 
+
+    for (i = 0; i < 8; i++)
+      STM_EVAL_LEDOff(i);
+
+    for (i = 0; i < NUM_JOYSTICKS; i++) {
+      gamepad_update(&gamepads[i]);
+
+      if (gamepads[i].report[2] < 0)
+        if (gamepads[i].report[3] < 0)
+          STM_EVAL_LEDOn(LED8);
+        else if (gamepads[i].report[3] > 0)
+          STM_EVAL_LEDOn(LED4);
+        else
+          STM_EVAL_LEDOn(LED6);
+      else if (gamepads[i].report[2] > 0)
+        if (gamepads[i].report[3] < 0)
+          STM_EVAL_LEDOn(LED9);
+        else if (gamepads[i].report[3] > 0)
+          STM_EVAL_LEDOn(LED5);
+        else
+          STM_EVAL_LEDOn(LED7);
+      else
+        if (gamepads[i].report[3] < 0)
+          STM_EVAL_LEDOn(LED10);
+        else if (gamepads[i].report[3] > 0)
+          STM_EVAL_LEDOn(LED3);
+    }
+
+    if (gamepads[current_gamepad].report[4]) {
+      gamepads[current_gamepad].report[4] = 0;
+      /* Reset the control token to inform upper layer that a transfer is ongoing */
+      PrevXferComplete = 0;
+      /* Copy mouse position info in ENDP1 Tx Packet Memory Area*/
+      USB_SIL_Write(EP1_IN, (uint8_t*)gamepads[current_gamepad].report, 4);
+      /* Enable endpoint for transmission */
+      SetEPTxValid(ENDP1);
+    }
+
+    current_gamepad = (current_gamepad + 1) % NUM_JOYSTICKS;
+
     /* Get Data Accelerometer */
     Acc_ReadData(AccBuffer);
 
     for(i=0;i<3;i++)
       AccBuffer[i] /= 100.0f;
 
-    /* Get position */
-    Mouse_Buffer = USBD_HID_GetPos();
-    /* Update the cursor position */
-    if((Mouse_Buffer[1] != 0) ||(Mouse_Buffer[2] != 0))
-    {
-      /* Reset the control token to inform upper layer that a transfer is ongoing */
-      PrevXferComplete = 0;
-
-      /* Copy mouse position info in ENDP1 Tx Packet Memory Area*/
-      USB_SIL_Write(EP1_IN, Mouse_Buffer, 4);
-
-      /* Enable endpoint for transmission */
-      SetEPTxValid(ENDP1);
-    }
   }
 }
 
@@ -126,41 +298,6 @@ void USB_Config(void)
 
   while (bDeviceState != CONFIGURED)
   {}
-}
-
-/**
-  * @brief  USBD_HID_GetPos
-  * @param  None
-  * @retval Pointer to report
-  */
-static uint8_t *USBD_HID_GetPos (void)
-{
-  static uint8_t HID_Buffer[4] = {0};
-
-  HID_Buffer[1] = 0;
-  HID_Buffer[2] = 0;
-  /* LEFT Direction */
-  if(((int8_t)AccBuffer[1]) < -2)
-  {
-    HID_Buffer[1] += CURSOR_STEP;
-  }
-  /* RIGHT Direction */
-  if(((int8_t)AccBuffer[1]) > 2)
-  {
-   HID_Buffer[1] -= CURSOR_STEP;
-  }
-  /* UP Direction */
-  if(((int8_t)AccBuffer[0]) < -2)
-  {
-    HID_Buffer[2] += CURSOR_STEP;
-  }
-  /* DOWN Direction */
-  if(((int8_t)AccBuffer[0]) > 2)
-  {
-    HID_Buffer[2] -= CURSOR_STEP;
-  }
-
-  return HID_Buffer;
 }
 
 /**
