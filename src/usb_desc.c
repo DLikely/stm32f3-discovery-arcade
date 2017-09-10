@@ -223,8 +223,38 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 			0x95, 0x02,    /*Report Count(2)*/
 			0x81, 0x02,    /*Input(Variable, Relative)*//* 40 */
 		0xC0,          /*End Collection*/
-	0xC0           /*End Collection*/
+	0xC0,          /*End Collection*/
 #endif
+	0x05, 0x01,    /*Usage Page(Generic Desktop)*/
+	0x09, 0x02,    /*Usage(Mouse)*/
+	0xA1, 0x01,    /*Collection(Logical)*/
+		0x09, 0x01,    /*Usage(Pointer)*/
+		0xA1, 0x00,    /*Collection(Physical)*/
+			0x85, 0x05,    /* Report ID 5 */
+			/* Buttons */
+			0x05, 0x09,    /*Usage Page(Buttons)*/		/* 8 */
+			0x19, 0x01,    /*Usage Minimum(1)*/
+			0x29, 0x02,    /*Usage Maximum(8)*/
+			0x15, 0x00,    /*Logical Minimum(0)*/
+			0x25, 0x01,    /*Logical Maximum(1)*/		/* 16 */
+			0x75, 0x01,    /*Report Size(1)*/
+			0x95, 0x02,    /*Report Count(8)*/
+			0x81, 0x02,    /*Input(Variable)*/
+			/* NULL */
+			0x75, 0x05,    /*Report Size(5)*/
+			0x95, 0x01,    /*Report Count(1)*/
+			0x81, 0x01,    /*Input(Constant)*/
+			/* X/Y Axis */
+			0x05, 0x01,    /*Usage Page(Generic Desktop)*/	/* 24 */
+			0x09, 0x30,    /*Usage(X axis)*/
+			0x09, 0x31,    /*Usage(Y axis)*/
+			0x15, 0x80,    /*Logical Minimum(-128)*//* 32 */
+			0x25, 0x7f,    /*Logical Maximum(127)*/
+			0x75, 0x08,    /*Report Size(8)*/
+			0x95, 0x02,    /*Report Count(2)*/
+			0x81, 0x06,    /*Input(Variable, Relative)*//* 40 */
+		0xC0,          /*End Collection*/
+	0xC0           /*End Collection*/
 };
 
 /* USB String Descriptors (optional) */

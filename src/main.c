@@ -70,6 +70,7 @@ static int8_t gamepad3_report[5] = {3,0,0,0,0};
 #if (NUM_JOYSTICKS >= 4)
 static int8_t gamepad4_report[5] = {4,0,0,0,0};
 #endif
+static int8_t trackball_report[5] = {5,0,0,0,0};
 
 /* Gamepad GPIO defintions */
 struct gpio {
@@ -84,11 +85,11 @@ struct gamepad_cfg {
 	int8_t *report;
 };
 
-const struct gamepad_cfg gamepads[NUM_JOYSTICKS] = {
+const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 1)
 	{
-		.x = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_12 }},
-		.y = {{ GPIOD, GPIO_Pin_14 },{ GPIOC, GPIO_Pin_7 }},
+		.x = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_8 }},
+		.y = {{ GPIOB, GPIO_Pin_14 },{ GPIOB, GPIO_Pin_12 }},
 		.btns = {
 			{ GPIOC, GPIO_Pin_11 }, /* A */
 			{ GPIOD, GPIO_Pin_2 },  /* B */
@@ -104,8 +105,8 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS] = {
 #endif
 #if (NUM_JOYSTICKS >= 2)
 	{
-		.x = {{ GPIOC, GPIO_Pin_6 },{ GPIOD, GPIO_Pin_11 }},
-		.y = {{ GPIOD, GPIO_Pin_15 },{ GPIOD, GPIO_Pin_13 }},
+		.x = {{ GPIOB, GPIO_Pin_13 },{ GPIOD, GPIO_Pin_11 }},
+		.y = {{ GPIOB, GPIO_Pin_15 },{ GPIOD, GPIO_Pin_9 }},
 		.btns = {
 			{ GPIOC, GPIO_Pin_12 }, /* A */
 			{ GPIOD, GPIO_Pin_3 },  /* B */
@@ -129,6 +130,9 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS] = {
 		.report = gamepad4_report,
 	},
 #endif
+	{
+		.report = trackball_report,
+	}
 };
 
 void gpio_init_input(const struct gpio *gpio)
@@ -185,6 +189,66 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
 }
 
+void trackball_update(void)
+{
+	static int16_t lastx = 0, lasty = 0;
+	int16_t value;
+
+	value = TIM_GetCounter(TIM3);
+	if (lastx != value) {
+		STM_EVAL_LEDOn(LED3);
+		trackball_report[2] = value - lastx;
+		trackball_report[4] = 1;
+		lastx = value;
+	}
+	value = TIM_GetCounter(TIM4);
+	if (lasty != value) {
+		STM_EVAL_LEDOn(LED4);
+		trackball_report[3] = value - lasty;
+		trackball_report[4] = 1;
+		lasty = value;
+	}
+}
+
+void encoder_init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure = {
+		.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7,
+		.GPIO_Speed = GPIO_Speed_50MHz,
+		.GPIO_Mode = GPIO_Mode_AF,
+		.GPIO_OType = GPIO_OType_PP,
+		.GPIO_PuPd = GPIO_PuPd_UP,
+	};
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+
+	/* Connect PB{4,5} pins to TIM3_CH{1,2} */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource4, GPIO_AF_2);
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_2);
+
+	/* Connect PD{12,13} pins to TIM4_CH{1,2} */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_2);
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource13, GPIO_AF_2);
+
+	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+	TIM_TimeBaseStructure.TIM_Period = 0xffff;
+	TIM_TimeBaseStructure.TIM_Prescaler = 0;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+
+	/* Setup Encoder mode on TIM3 */
+	TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI1, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+	TIM_Cmd(TIM3, ENABLE);
+	/* Setup Encoder mode on TIM4 */
+	TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI1, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+	TIM_Cmd(TIM4, ENABLE);
+}
+
 int main(void)
 {
   int i = 0;
@@ -197,7 +261,9 @@ int main(void)
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOD, ENABLE);
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE);
-  SysTick_Config(RCC_Clocks.HCLK_Frequency / 100);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+  SysTick_Config(RCC_Clocks.HCLK_Frequency / 500);
 
   /* Initialize LEDs and User Button available on STM32F3-Discovery board */
   STM_EVAL_LEDInit(LED3);
@@ -212,6 +278,11 @@ int main(void)
 
   STM_EVAL_LEDOn(LED3);
 
+  /* Set up the pins */
+  for (i = 0; i < NUM_JOYSTICKS; i++)
+    gamepad_init(&gamepads[i]);
+  encoder_init();
+
   /* Configure the USB */
   USB_Config();
   STM_EVAL_LEDOn(LED4);
@@ -219,9 +290,6 @@ int main(void)
   /* Accelerometer Configuration */
   Acc_Config();
   STM_EVAL_LEDOn(LED5);
-
-  for (i = 0; i < NUM_JOYSTICKS; i++)
-    gamepad_init(&gamepads[i]);
 
   STM_EVAL_LEDOn(LED6);
 
@@ -262,17 +330,20 @@ int main(void)
           STM_EVAL_LEDOn(LED3);
     }
 
+    if (current_gamepad == 4)
+      trackball_update();
+
     if (gamepads[current_gamepad].report[4]) {
       gamepads[current_gamepad].report[4] = 0;
       /* Reset the control token to inform upper layer that a transfer is ongoing */
       PrevXferComplete = 0;
-      /* Copy mouse position info in ENDP1 Tx Packet Memory Area*/
+      /* Copy report position info in ENDP1 Tx Packet Memory Area*/
       USB_SIL_Write(EP1_IN, (uint8_t*)gamepads[current_gamepad].report, 4);
       /* Enable endpoint for transmission */
       SetEPTxValid(ENDP1);
     }
 
-    current_gamepad = (current_gamepad + 1) % NUM_JOYSTICKS;
+    current_gamepad = (current_gamepad + 1) % (NUM_JOYSTICKS+1);
 
     /* Get Data Accelerometer */
     Acc_ReadData(AccBuffer);
