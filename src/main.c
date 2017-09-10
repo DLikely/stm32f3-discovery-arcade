@@ -30,17 +30,31 @@
 #include "main.h"
 #include <string.h>
 
-/** @addtogroup STM32F3_Discovery_Peripheral_Examples
-  * @{
-  */
+/* LED numbers for PWM channels. Note: LED numbers starts at '1'. 0 is reserved
+ * to mean 'no LED' */
+#define LEDS_PER_CHANNEL (32)
+#define NEOPIXEL_CHANNEL_1 (1)
+#define NEOPIXEL_CHANNEL_2 (LEDS_PER_CHANNEL+1)
+#define NEOPIXEL_CHANNEL_3 (LEDS_PER_CHANNEL*2+1)
+#define NEOPIXEL_CHANNEL_4 (LEDS_PER_CHANNEL*3+1)
 
-/** @addtogroup USB_Example
-  * @{
-  */
+/* LED numbers assigned to each player's control cluster */
+#define PLR1_LEDS (NEOPIXEL_CHANNEL_1)
+#define PLR1_SS_LEDS (NEOPIXEL_CHANNEL_1+14)
+#define PLR2_LEDS (NEOPIXEL_CHANNEL_2+10)
+#define PLR2_SS_LEDS (NEOPIXEL_CHANNEL_2)
+#define PLR3_LEDS (NEOPIXEL_CHANNEL_1+6)
+#define PLR3_SS_LEDS (NEOPIXEL_CHANNEL_1+12)
+#define PLR4_LEDS (NEOPIXEL_CHANNEL_2+4)
+#define PLR4_SS_LEDS (NEOPIXEL_CHANNEL_2+2)
+#define TRACKBALL_LEDS (NEOPIXEL_CHANNEL_2+16)
 
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
+/* Player color assignment */
+#define PLR1_COLOR {0,0xff,0,0}
+#define PLR2_COLOR {0xff,0,0,0}
+#define PLR3_COLOR {0,0,0xff,0}
+#define PLR4_COLOR {0xff,0xff,0,0}
+
 #define PI                         (float)     3.14159265f
 
 #define LSM_Acc_Sensitivity_2g     (float)     1.0f            /*!< accelerometer sensitivity with 2 g full scale [LSB/mg] */
@@ -88,29 +102,23 @@ struct gamepad_cfg {
 	int8_t *report;
 };
 
-#define LEDS_PER_CHANNEL (32)
-#define PLR1_LED_NUM (1)
-#define PLR2_LED_NUM (LEDS_PER_CHANNEL+11)
-#define PLR3_LED_NUM (PLR1_LED_NUM+6)
-#define PLR4_LED_NUM (LEDS_PER_CHANNEL+5)
-
 const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 1)
 	{
 		.x = {{ GPIOB, GPIO_Pin_12 },{ GPIOB, GPIO_Pin_14 },},
 		.y = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_8 }, },
 		.btns = {
-			{ GPIOD, GPIO_Pin_11, PLR1_LED_NUM+1 },  /* A */
-			{ GPIOD, GPIO_Pin_9,  PLR1_LED_NUM+3 },  /* B */
-			{ GPIOB, GPIO_Pin_15, PLR1_LED_NUM+2 },  /* X */
-			{ GPIOB, GPIO_Pin_13, PLR1_LED_NUM+5 },  /* Y */
-			{ GPIOB, GPIO_Pin_11, PLR1_LED_NUM+4 },  /* L */
-			{ GPIOB, GPIO_Pin_10, PLR1_LED_NUM   },  /* R */
-			{ GPIOD, GPIO_Pin_15, PLR1_LED_NUM+8+6 },  /* Select */
-			{ GPIOD, GPIO_Pin_14, PLR1_LED_NUM+8+7 }, /* Start */
+			{ GPIOD, GPIO_Pin_11, PLR1_LEDS+1 },  /* A */
+			{ GPIOD, GPIO_Pin_9,  PLR1_LEDS+3 },  /* B */
+			{ GPIOB, GPIO_Pin_15, PLR1_LEDS+2 },  /* X */
+			{ GPIOB, GPIO_Pin_13, PLR1_LEDS+5 },  /* Y */
+			{ GPIOB, GPIO_Pin_11, PLR1_LEDS+4 },  /* L */
+			{ GPIOB, GPIO_Pin_10, PLR1_LEDS   },  /* R */
+			{ GPIOD, GPIO_Pin_15, PLR1_SS_LEDS   },  /* Select */
+			{ GPIOD, GPIO_Pin_14, PLR1_SS_LEDS+1 }, /* Start */
 		},
 		.report = gamepad1_report,
-		.color = {0,0xff,0,0},
+		.color = PLR1_COLOR,
 	},
 #endif
 #if (NUM_JOYSTICKS >= 2)
@@ -118,17 +126,17 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.x = {{ GPIOD, GPIO_Pin_2 },{ GPIOD, GPIO_Pin_0 }},
 		.y = {{ GPIOA, GPIO_Pin_15 },{ GPIOC, GPIO_Pin_11 }},
 		.btns = {
-			{ GPIOC, GPIO_Pin_9, PLR2_LED_NUM+1 },  /* A */
-			{ GPIOC, GPIO_Pin_8, PLR2_LED_NUM+3 },  /* B */
-			{ GPIOA, GPIO_Pin_8, PLR2_LED_NUM+2 },  /* X */
-			{ GPIOF, GPIO_Pin_6, PLR2_LED_NUM+5 },  /* Y */
-			{ GPIOC, GPIO_Pin_10,PLR2_LED_NUM+4 },  /* L */
-			{ GPIOC, GPIO_Pin_12,PLR2_LED_NUM   },  /* R */
-			{ GPIOD, GPIO_Pin_4, LEDS_PER_CHANNEL+1 },  /* Select */
-			{ GPIOD, GPIO_Pin_6, LEDS_PER_CHANNEL+2 }, /* Start */
+			{ GPIOC, GPIO_Pin_9, PLR2_LEDS+1 },  /* A */
+			{ GPIOC, GPIO_Pin_8, PLR2_LEDS+3 },  /* B */
+			{ GPIOA, GPIO_Pin_8, PLR2_LEDS+2 },  /* X */
+			{ GPIOF, GPIO_Pin_6, PLR2_LEDS+5 },  /* Y */
+			{ GPIOC, GPIO_Pin_10,PLR2_LEDS+4 },  /* L */
+			{ GPIOC, GPIO_Pin_12,PLR2_LEDS   },  /* R */
+			{ GPIOD, GPIO_Pin_4, PLR2_SS_LEDS   },  /* Selec+t */
+			{ GPIOD, GPIO_Pin_6, PLR2_SS_LEDS+1 }, /* Start */
 		},
 		.report = gamepad2_report,
-		.color = {0xff,0,0,0},
+		.color = PLR2_COLOR,
 	},
 #endif
 #if (NUM_JOYSTICKS >= 3)
@@ -136,17 +144,17 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.x = {{ GPIOF, GPIO_Pin_2 },{ GPIOA, GPIO_Pin_4 },},
 		.y = {{ GPIOB, GPIO_Pin_0 },{ GPIOA, GPIO_Pin_9 },},
 		.btns = {
-			{ GPIOE, GPIO_Pin_7, PLR3_LED_NUM+1 }, /* A */
-			{ GPIOB, GPIO_Pin_1, PLR3_LED_NUM+3 },  /* B */
-			{ GPIOA, GPIO_Pin_10,PLR3_LED_NUM+2 },  /* X */
-			{ GPIOF, GPIO_Pin_4, PLR3_LED_NUM+5 },  /* Y */
-			{ GPIOC, GPIO_Pin_3, PLR3_LED_NUM+4 },  /* L */
-			{ GPIOC, GPIO_Pin_1, PLR3_LED_NUM   }, /* R */
-			{ GPIOC, GPIO_Pin_2, PLR3_LED_NUM+6 },  /* Select */
-			{ GPIOC, GPIO_Pin_0, PLR3_LED_NUM+7 }, /* Start */
+			{ GPIOE, GPIO_Pin_7, PLR3_LEDS+1 }, /* A */
+			{ GPIOB, GPIO_Pin_1, PLR3_LEDS+3 },  /* B */
+			{ GPIOA, GPIO_Pin_10,PLR3_LEDS+2 },  /* X */
+			{ GPIOF, GPIO_Pin_4, PLR3_LEDS+5 },  /* Y */
+			{ GPIOC, GPIO_Pin_3, PLR3_LEDS+4 },  /* L */
+			{ GPIOC, GPIO_Pin_1, PLR3_LEDS   }, /* R */
+			{ GPIOC, GPIO_Pin_2, PLR3_SS_LEDS   },  /* Select */
+			{ GPIOC, GPIO_Pin_0, PLR3_SS_LEDS+1 }, /* Start */
 		},
 		.report = gamepad3_report,
-		.color = {0,0,0xff,0},
+		.color = PLR3_COLOR,
 	},
 #endif
 #if (NUM_JOYSTICKS >= 4)
@@ -154,22 +162,22 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 		.x = {{ GPIOF, GPIO_Pin_10 },{ GPIOC, GPIO_Pin_13 },},
 		.y = {{ GPIOB, GPIO_Pin_5 }, { GPIOB, GPIO_Pin_9 }, },
 		.btns = {
-			{ GPIOD, GPIO_Pin_1, PLR4_LED_NUM+1 }, /* A */
-			{ GPIOD, GPIO_Pin_3, PLR4_LED_NUM+3 },  /* B */
-			{ GPIOD, GPIO_Pin_5, PLR4_LED_NUM+2 },  /* X */
-			{ GPIOD, GPIO_Pin_7, PLR4_LED_NUM+5 },  /* Y */
-			{ GPIOB, GPIO_Pin_4, PLR4_LED_NUM+4 },  /* L */
-			{ GPIOB, GPIO_Pin_8, PLR4_LED_NUM   }, /* R */
-			{ GPIOF, GPIO_Pin_9, LEDS_PER_CHANNEL+3 },  /* Select */
-			{ GPIOE, GPIO_Pin_6, LEDS_PER_CHANNEL+4 }, /* Start */
+			{ GPIOD, GPIO_Pin_1, PLR4_LEDS+1 }, /* A */
+			{ GPIOD, GPIO_Pin_3, PLR4_LEDS+3 },  /* B */
+			{ GPIOD, GPIO_Pin_5, PLR4_LEDS+2 },  /* X */
+			{ GPIOD, GPIO_Pin_7, PLR4_LEDS+5 },  /* Y */
+			{ GPIOB, GPIO_Pin_4, PLR4_LEDS+4 },  /* L */
+			{ GPIOB, GPIO_Pin_8, PLR4_LEDS   }, /* R */
+			{ GPIOF, GPIO_Pin_9, PLR4_SS_LEDS   },  /* Select */
+			{ GPIOE, GPIO_Pin_6, PLR4_SS_LEDS+1 }, /* Start */
 		},
 		.report = gamepad4_report,
-		.color = {0xff,0xff,0,0},
+		.color = PLR4_COLOR,
 	},
 #endif
 	{
 		.btns = {
-			{ GPIOF, GPIO_Pin_6, PLR2_LED_NUM+6}, /* Y */
+			{ GPIOF, GPIO_Pin_6, TRACKBALL_LEDS}, /* Y */
 			{ GPIOC, GPIO_Pin_8, 0}, /* B */
 			{ GPIOC, GPIO_Pin_9, 0}, /* A */
 		},
