@@ -88,11 +88,11 @@ struct gamepad_cfg {
 	int8_t *report;
 };
 
-#define LEDS_PER_CHANNEL 32
-#define PLR1_LED_NUM 1
-#define PLR2_LED_NUM LEDS_PER_CHANNEL+11
-#define PLR3_LED_NUM PLR1_LED_NUM+6
-#define PLR4_LED_NUM LEDS_PER_CHANNEL+5
+#define LEDS_PER_CHANNEL (32)
+#define PLR1_LED_NUM (1)
+#define PLR2_LED_NUM (LEDS_PER_CHANNEL+11)
+#define PLR3_LED_NUM (PLR1_LED_NUM+6)
+#define PLR4_LED_NUM (LEDS_PER_CHANNEL+5)
 
 const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 1)
@@ -169,9 +169,9 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #endif
 	{
 		.btns = {
-			{ GPIOF, GPIO_Pin_6, 12},  /* Y */
-			{ GPIOC, GPIO_Pin_8, 13 },  /* B */
-			{ GPIOC, GPIO_Pin_9, 15 }, /* A */
+			{ GPIOF, GPIO_Pin_6, PLR2_LED_NUM+6}, /* Y */
+			{ GPIOC, GPIO_Pin_8, 0}, /* B */
+			{ GPIOC, GPIO_Pin_9, 0}, /* A */
 		},
 		.report = trackball_report,
 	}
@@ -248,23 +248,52 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
 }
 
+// Helper defines
+#define newColor(r, g, b, w) (((uint32_t)(w) << 24) | ((uint32_t)(r) << 16) | \
+                              ((uint32_t)(g) <<  8) | (b))
+#define White(c) ((uint8_t)((c >> 24) & 0xFF))
+#define Red(c) ((uint8_t)((c >> 16) & 0xFF))
+#define Green(c) ((uint8_t)((c >> 8) & 0xFF))
+#define Blue(c) ((uint8_t)(c & 0xFF))
+
+
+uint32_t Wheel(uint8_t WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return newColor(255 - WheelPos * 3, 0, WheelPos * 3, 0);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return newColor(0, WheelPos * 3, 255 - WheelPos * 3, 0);
+  }
+  WheelPos -= 170;
+  return newColor(WheelPos * 3, 255 - WheelPos * 3, 0, 0);
+}
+
+
 void trackball_update(const struct gamepad_cfg *gpcfg)
 {
 	static int16_t lastx = 0, lasty = 0;
 	int16_t value;
 	int8_t btn_state = 0;
 	int i;
+	static uint8_t color_pos = 0;
+	uint32_t color;
 
 	if (gpcfg->report[4])
 		return;
 
 	value = TIM_GetCounter(TIM3);
-	gpcfg->report[2] = value - lastx;
+	color_pos += gpcfg->report[2] = value - lastx;
 	lastx = value;
 
 	value = TIM_GetCounter(TIM4);
-	gpcfg->report[3] = value - lasty;
+	color_pos += gpcfg->report[3] = value - lasty;
 	lasty = value;
+
+	color = Wheel(color_pos);
+	for (i = 0; i < 7; i++)
+		memcpy(&led_buffer[gpcfg->btns[0].led+i-1], &color, 4);
 
 	for (i = 0; i < 3; i++)
 		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
