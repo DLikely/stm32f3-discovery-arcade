@@ -28,6 +28,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <string.h>
 
 /** @addtogroup STM32F3_Discovery_Peripheral_Examples
   * @{
@@ -80,6 +81,7 @@ struct gpio {
 };
 
 struct gamepad_cfg {
+	uint8_t color[4];
 	struct gpio x[2];
 	struct gpio y[2];
 	struct gpio btns[8];
@@ -107,6 +109,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 			{ GPIOD, GPIO_Pin_14, PLR1_LED_NUM+8+7 }, /* Start */
 		},
 		.report = gamepad1_report,
+		.color = {0,0xff,0,0},
 	},
 #endif
 #if (NUM_JOYSTICKS >= 2)
@@ -124,6 +127,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 			{ GPIOD, GPIO_Pin_6, PLR2_LED_NUM+8+6 }, /* Start */
 		},
 		.report = gamepad2_report,
+		.color = {0xff,0,0,0},
 	},
 #endif
 #if (NUM_JOYSTICKS >= 3)
@@ -141,6 +145,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 			{ GPIOC, GPIO_Pin_0, PLR3_LED_NUM+7 }, /* Start */
 		},
 		.report = gamepad3_report,
+		.color = {0,0,0xff,0},
 	},
 #endif
 #if (NUM_JOYSTICKS >= 4)
@@ -158,6 +163,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 			{ GPIOE, GPIO_Pin_6, PLR4_LED_NUM+6 }, /* Start */
 		},
 		.report = gamepad4_report,
+		.color = {0xff,0xff,0,0},
 	},
 #endif
 	{
@@ -217,6 +223,7 @@ void gamepad_update_single(const struct gamepad_cfg *gpcfg, int idx, int8_t valu
 void gamepad_update(const struct gamepad_cfg *gpcfg)
 {
 	int8_t tmp, btn_state = 0;
+	uint8_t *led;
 	int i;
 
 	if (gpcfg->report[4])
@@ -226,11 +233,14 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 		tmp = gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
 		btn_state |= tmp;
 
-		/* This is an ugly hack to get red for P1, and blue for P2. To be fixed */
-		if (gpcfg->btns[i].led > 8)
-			led_buffer[gpcfg->btns[i].led-1][2] = tmp ? 0:0xff;
-		else if (gpcfg->btns[i].led > 0)
-			led_buffer[gpcfg->btns[i].led-1][0] = tmp ? 0:0xff;
+		/* Set the button illumination */
+		if (gpcfg->btns[i].led) {
+			led = led_buffer[gpcfg->btns[i].led-1];
+			if (tmp)
+				memset(led, 0, 4);
+			else
+				memcpy(led, gpcfg->color, 4);
+		}
 	}
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
@@ -340,7 +350,8 @@ int main(void)
   encoder_init();
   ws2812_init();
 
-  ws2812_send(&led_buffer[10], 16);
+  memset(led_buffer, 0, sizeof(led_buffer));
+  ws2812_send(&led_buffer[0], 24);
   while(DataReady !=0x02)
   {}
   DataReady = 0x00;
@@ -363,9 +374,6 @@ int main(void)
     while(DataReady !=0x02)
     {}
     DataReady = 0x00;
-
-    /* Kick off an LED transfer */
-    led_buffer[7][2] = cindex++ >> 1;
 
     for (i = 0; i < 8; i++)
       STM_EVAL_LEDOff(i);
@@ -415,7 +423,11 @@ int main(void)
     for(i=0;i<3;i++)
       AccBuffer[i] /= 100.0f;
 
-    ws2812_send(led_buffer, 16);
+    /* 'Throb' one of the buttons */
+    cindex++;
+    led_buffer[15][1] = (cindex&0x1ff) > 0x100 ? 0x100-(cindex>>1) : cindex>>1;
+
+    ws2812_send(led_buffer, 24);
   }
 }
 

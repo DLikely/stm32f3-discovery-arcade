@@ -31,10 +31,10 @@
 #define LED_PER_HALF 1
 
 static union {
-	uint8_t buffer[2*LED_PER_HALF*24];
+	uint8_t buffer[2*LED_PER_HALF*32];
 	struct {
-		uint8_t begin[LED_PER_HALF*24];
-		uint8_t end[LED_PER_HALF*24];
+		uint8_t begin[LED_PER_HALF*32];
+		uint8_t end[LED_PER_HALF*32];
 	} __attribute__((packed));
 } led_dma;
 
@@ -132,6 +132,8 @@ static void fillLed(uint8_t *buffer, uint8_t *color)
 		buffer[8+i] = ((color[0]<<i) & 0x80)?17:9;
 	for(i=0; i<8; i++) // BLUE
 		buffer[16+i] = ((color[2]<<i) & 0x80)?17:9;
+	for(i=0; i<8; i++) // WHITE
+		buffer[24+i] = ((color[3]<<i) & 0x80)?17:9;
 }
 
 static int current_led = 0;
@@ -154,16 +156,16 @@ void ws2812_send(uint8_t (*color)[4], int len)
 
 	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++) {
 		if (current_led<total_led)
-			fillLed(led_dma.begin+(24*i), color_led[current_led]);
+			fillLed(led_dma.begin+(32*i), color_led[current_led]);
 		else
-			memset(led_dma.begin+(24*i), 0, 24);
+			memset(led_dma.begin+(32*i), 0, 32);
 	}
 
 	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++) {
 		if (current_led<total_led)
-			fillLed(led_dma.end+(24*i), color_led[current_led]);
+			fillLed(led_dma.end+(32*i), color_led[current_led]);
 		else
-			memset(led_dma.end+(24*i), 0, 24);
+			memset(led_dma.end+(32*i), 0, 32);
 	}
 
 	DMA1_Channel5->CNDTR = sizeof(led_dma.buffer); // load number of bytes to be transferred
@@ -197,9 +199,9 @@ void DMA1_Channel5_IRQHandler(void)
 
 	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++) {
 		if (current_led<total_led)
-			fillLed(buffer+(24*i), color_led[current_led]);
+			fillLed(buffer+(32*i), color_led[current_led]);
 		else
-			memset(buffer+(24*i), 0, 24);
+			memset(buffer+(32*i), 0, 32);
 	}
 
 	if (current_led >= total_led+2) {
