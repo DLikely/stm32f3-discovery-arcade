@@ -1,9 +1,12 @@
-#STM32F3-Discovery USB Example application
+#STM32F3-Discovery Arcade control interface
 
-A USB Joystick implemented using the accelerometers in the STM32F3 Discovery board.
+An arcade controls interface board implementing a multireport USB HID device with 4
+Joysticks connected by GPIO to an STM32F3 Discovery board.
 
-This is a use of the template application for the STM32F30x ARM microcontrollers
-that compiles with GNU tools.
+This application is forked from the cjheath's
+[stm32f3-discovery-usb-example-project](cjheath/stm32f3-discovery-usb-example.git),
+which in turn is derived from the template application for the STM32F30x ARM
+microcontrollers that compiles with GNU tools.
 
 The template serves as a quick-start for those who do not wish to use an IDE, but rather
 develop in a text editor of choice and build from the command line. It is
