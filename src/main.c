@@ -256,6 +256,30 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
 }
 
+void gamepad_update_leds(const struct gamepad_cfg *gpcfg)
+{
+	/* Show direction on the Compass Rose LEDs */
+	if (gpcfg->report[2] < 0)
+		if (gpcfg->report[3] < 0)
+			STM_EVAL_LEDOn(LED8);
+		else if (gpcfg->report[3] > 0)
+			STM_EVAL_LEDOn(LED4);
+		else
+			STM_EVAL_LEDOn(LED6);
+	else if (gpcfg->report[2] > 0)
+		if (gpcfg->report[3] < 0)
+			STM_EVAL_LEDOn(LED9);
+		else if (gpcfg->report[3] > 0)
+			STM_EVAL_LEDOn(LED5);
+		else
+			STM_EVAL_LEDOn(LED7);
+	else
+		if (gpcfg->report[3] < 0)
+			STM_EVAL_LEDOn(LED10);
+		else if (gpcfg->report[3] > 0)
+			STM_EVAL_LEDOn(LED3);
+}
+
 // Helper defines
 #define newColor(r, g, b, w) (((uint32_t)(w) << 24) | ((uint32_t)(r) << 16) | \
                               ((uint32_t)(g) <<  8) | (b))
@@ -416,32 +440,13 @@ int main(void)
     for (i = 0; i < 8; i++)
       STM_EVAL_LEDOff(i);
 
-    for (i = 0; i < NUM_JOYSTICKS; i++) {
-      gamepad_update(&gamepads[i]);
-
-      if (gamepads[i].report[2] < 0)
-        if (gamepads[i].report[3] < 0)
-          STM_EVAL_LEDOn(LED8);
-        else if (gamepads[i].report[3] > 0)
-          STM_EVAL_LEDOn(LED4);
-        else
-          STM_EVAL_LEDOn(LED6);
-      else if (gamepads[i].report[2] > 0)
-        if (gamepads[i].report[3] < 0)
-          STM_EVAL_LEDOn(LED9);
-        else if (gamepads[i].report[3] > 0)
-          STM_EVAL_LEDOn(LED5);
-        else
-          STM_EVAL_LEDOn(LED7);
-      else
-        if (gamepads[i].report[3] < 0)
-          STM_EVAL_LEDOn(LED10);
-        else if (gamepads[i].report[3] > 0)
-          STM_EVAL_LEDOn(LED3);
-    }
-
     if (current_gamepad == 4)
       trackball_update(&gamepads[current_gamepad]);
+    else
+      gamepad_update(&gamepads[current_gamepad]);
+
+    for (i = 0; i < NUM_JOYSTICKS; i++)
+      gamepad_update_leds(&gamepads[i]);
 
     if (gamepads[current_gamepad].report[4]) {
       gamepads[current_gamepad].report[4] = 0;
