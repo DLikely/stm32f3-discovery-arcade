@@ -414,9 +414,10 @@ int main(void)
 
   memset(led_buffer, 0, sizeof(led_buffer));
   ws2812_send(led_buffer, LEDS_PER_CHANNEL);
-  while(DataReady !=0x02)
-  {}
-  DataReady = 0x00;
+
+  /* Wait for two timer ticks */
+  while (DataReady < 2);
+  DataReady = 0;
 
   /* Configure the USB */
   USB_Config();
@@ -429,13 +430,10 @@ int main(void)
   STM_EVAL_LEDOn(LED6);
 
   /* Infinite loop */
-  while (1)
-  {
-
-    /* Wait for data ready */
-    while(DataReady !=0x02)
-    {}
-    DataReady = 0x00;
+  while (1) {
+    /* Wait for two timer ticks */
+    while (DataReady < 2);
+    DataReady = 0;
 
     for (i = 0; i < 8; i++)
       STM_EVAL_LEDOff(i);
@@ -449,6 +447,8 @@ int main(void)
       gamepad_update_leds(&gamepads[i]);
 
     if (gamepads[current_gamepad].report[4]) {
+      while (PrevXferComplete != 1);
+
       gamepads[current_gamepad].report[4] = 0;
       /* Reset the control token to inform upper layer that a transfer is ongoing */
       PrevXferComplete = 0;
