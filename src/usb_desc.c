@@ -50,10 +50,14 @@ const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] =
     0x40,                       /*bMaxPacketSize 64*/
     /* I'm cheating by using another vendor's idVendor and idProduct. This is
      * because I need the multireport quirk enabled in Linux, and there doesn't
-     * seem to be a way to enable it generically. There's got to be a better
-     * way to do this without abusing the idVendor and idProduct fields */
-    0x43, 0x0b,                 /*idVendor (0x0b43)*/ 
-    0x03, 0x00,                 /*idProduct = 0x0003*/
+     * seem to be a way to enable it generically. This VID/DID pair is for the
+     * GreenAsia Dual USB joypad device. The core USB HID driver in Linux sets
+     * HID_QUIRK_MULTI_REPORT with it sees this VID/UID pair.
+     *
+     * There's got to be a better way to do this without abusing the idVendor
+     * and idProduct fields */
+    0x8f, 0x0e,                 /*idVendor (0x0e8f)*/
+    0x13, 0x30,                 /*idProduct (0x3013)*/
     0x00,                       /*bcdDevice rel. 2.00*/
     0x02,
     1,                          /*Index of string descriptor describing
