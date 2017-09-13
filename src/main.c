@@ -106,7 +106,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 1)
 	{
 		.x = {{ GPIOB, GPIO_Pin_12 },{ GPIOB, GPIO_Pin_14 },},
-		.y = {{ GPIOD, GPIO_Pin_10 },{ GPIOD, GPIO_Pin_8 }, },
+		.y = {{ GPIOD, GPIO_Pin_8 }, { GPIOD, GPIO_Pin_10 }, },
 		.btns = {
 			{ GPIOD, GPIO_Pin_11, PLR1_LEDS+1 },  /* A */
 			{ GPIOD, GPIO_Pin_9,  PLR1_LEDS+3 },  /* B */
@@ -124,7 +124,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 2)
 	{
 		.x = {{ GPIOD, GPIO_Pin_2 },{ GPIOD, GPIO_Pin_0 }},
-		.y = {{ GPIOA, GPIO_Pin_15 },{ GPIOC, GPIO_Pin_11 }},
+		.y = {{ GPIOC, GPIO_Pin_11 },{ GPIOA, GPIO_Pin_15 }},
 		.btns = {
 			{ GPIOC, GPIO_Pin_9, PLR2_LEDS+1 },  /* A */
 			{ GPIOC, GPIO_Pin_8, PLR2_LEDS+3 },  /* B */
@@ -142,7 +142,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 3)
 	{
 		.x = {{ GPIOF, GPIO_Pin_2 },{ GPIOA, GPIO_Pin_4 },},
-		.y = {{ GPIOB, GPIO_Pin_0 },{ GPIOA, GPIO_Pin_9 },},
+		.y = {{ GPIOA, GPIO_Pin_9 },{ GPIOB, GPIO_Pin_0 },},
 		.btns = {
 			{ GPIOE, GPIO_Pin_7, PLR3_LEDS+1 }, /* A */
 			{ GPIOB, GPIO_Pin_1, PLR3_LEDS+3 },  /* B */
@@ -160,7 +160,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS+1] = {
 #if (NUM_JOYSTICKS >= 4)
 	{
 		.x = {{ GPIOF, GPIO_Pin_10 },{ GPIOC, GPIO_Pin_13 },},
-		.y = {{ GPIOB, GPIO_Pin_5 }, { GPIOB, GPIO_Pin_9 }, },
+		.y = {{ GPIOB, GPIO_Pin_9 }, { GPIOB, GPIO_Pin_5 }, },
 		.btns = {
 			{ GPIOD, GPIO_Pin_1, PLR4_LEDS+1 }, /* A */
 			{ GPIOD, GPIO_Pin_3, PLR4_LEDS+3 },  /* B */
@@ -261,23 +261,23 @@ void gamepad_update_leds(const struct gamepad_cfg *gpcfg)
 	/* Show direction on the Compass Rose LEDs */
 	if (gpcfg->report[2] < 0)
 		if (gpcfg->report[3] < 0)
-			STM_EVAL_LEDOn(LED8);
-		else if (gpcfg->report[3] > 0)
 			STM_EVAL_LEDOn(LED4);
+		else if (gpcfg->report[3] > 0)
+			STM_EVAL_LEDOn(LED8);
 		else
 			STM_EVAL_LEDOn(LED6);
 	else if (gpcfg->report[2] > 0)
 		if (gpcfg->report[3] < 0)
-			STM_EVAL_LEDOn(LED9);
-		else if (gpcfg->report[3] > 0)
 			STM_EVAL_LEDOn(LED5);
+		else if (gpcfg->report[3] > 0)
+			STM_EVAL_LEDOn(LED9);
 		else
 			STM_EVAL_LEDOn(LED7);
 	else
 		if (gpcfg->report[3] < 0)
-			STM_EVAL_LEDOn(LED10);
-		else if (gpcfg->report[3] > 0)
 			STM_EVAL_LEDOn(LED3);
+		else if (gpcfg->report[3] > 0)
+			STM_EVAL_LEDOn(LED10);
 }
 
 // Helper defines
