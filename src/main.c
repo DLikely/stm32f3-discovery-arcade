@@ -481,9 +481,27 @@ int main(void)
   */
 void USB_Config(void)
 {
+	GPIO_InitTypeDef GPIO_InitStructure = {
+		.GPIO_Pin = GPIO_Pin_12,
+		.GPIO_Speed = GPIO_Speed_50MHz,
+		.GPIO_Mode = GPIO_Mode_OUT,
+		.GPIO_OType = GPIO_OType_PP,
+		.GPIO_PuPd = GPIO_PuPd_NOPULL,
+	};
+
   Set_System();
   Set_USBClock();
   USB_Interrupts_Config();
+
+  /* Fix broken powerup sequence on STM32F3 Discovery by forcing the DP pin to
+   * 0, waiting a bit, and then changing it back to USB. This fix is courtesy
+   * https://stackoverflow.com/questions/35218303/stm32f3-user-usb-not-detected */
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  GPIOA->BRR |= GPIO_Pin_12;
+  while (DataReady < 0xf0);
+  DataReady = 0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   USB_Init();
 
