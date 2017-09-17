@@ -58,9 +58,11 @@ uint8_t *Joystick_GetConfigDescriptor(uint16_t);
 uint8_t *Joystick_GetStringDescriptor(uint16_t);
 RESULT Joystick_SetProtocol(void);
 uint8_t *Joystick_GetProtocolValue(uint16_t Length);
-RESULT Joystick_SetProtocol(void);
 uint8_t *Joystick_GetReportDescriptor(uint16_t Length);
 uint8_t *Joystick_GetHIDDescriptor(uint16_t Length);
+uint8_t *Joystick_GetReport(uint16_t Length);
+uint8_t *Joystick_GetIdleValue(uint16_t Length);
+RESULT Joystick_SetIdle(void);
 
 /* Exported define -----------------------------------------------------------*/
 #define Joystick_GetConfiguration          NOP_Process

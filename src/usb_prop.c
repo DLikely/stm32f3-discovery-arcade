@@ -46,6 +46,7 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 uint32_t ProtocolValue;
+uint32_t IdleValue;
 
 /* -------------------------------------------------------------------------- */
 /*  Structures initializations */
@@ -250,18 +251,23 @@ RESULT Joystick_Data_Setup(uint8_t RequestNo)
 
   } /* End of GET_DESCRIPTOR */
 
-  /*** GET_PROTOCOL ***/
-  else if ((Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-           && RequestNo == GET_PROTOCOL)
+  else if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
   {
-    CopyRoutine = Joystick_GetProtocolValue;
+    switch (RequestNo) {
+    case GET_REPORT:
+      CopyRoutine = Joystick_GetReport;
+      break;
+    case GET_IDLE:
+      CopyRoutine = Joystick_GetIdleValue;
+      break;
+    case GET_PROTOCOL:
+      CopyRoutine = Joystick_GetProtocolValue;
+      break;
+    }
   }
 
-
-  if (CopyRoutine == NULL)
-  {
+  if (!CopyRoutine)
     return USB_UNSUPPORT;
-  }
 
   pInformation->Ctrl_Info.CopyData = CopyRoutine;
   pInformation->Ctrl_Info.Usb_wOffset = 0;
@@ -276,16 +282,17 @@ RESULT Joystick_Data_Setup(uint8_t RequestNo)
   */
 RESULT Joystick_NoData_Setup(uint8_t RequestNo)
 {
-  if ((Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
-      && (RequestNo == SET_PROTOCOL))
+  if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
   {
-    return Joystick_SetProtocol();
+    switch (RequestNo) {
+    //case SET_REPORT:
+    case SET_IDLE:
+      return Joystick_SetIdle();
+    case SET_PROTOCOL:
+      return Joystick_SetProtocol();
+    }
   }
-
-  else
-  {
-    return USB_UNSUPPORT;
-  }
+  return USB_UNSUPPORT;
 }
 
 /**
@@ -365,6 +372,13 @@ RESULT Joystick_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSettin
   return USB_SUCCESS;
 }
 
+RESULT Joystick_SetIdle(void)
+{
+  uint8_t wValue0 = pInformation->USBwValue0;
+  IdleValue = wValue0;
+  return USB_SUCCESS;
+}
+
 /**
   * @brief  Joystick Set Protocol request routine.
   * @param  None.
@@ -377,6 +391,25 @@ RESULT Joystick_SetProtocol(void)
   return USB_SUCCESS;
 }
 
+uint8_t *Joystick_GetReport(uint16_t Length)
+{
+  static uint8_t dummy_report[] = {0,0,0,0};
+  if (Length == 0) {
+    pInformation->Ctrl_Info.Usb_wLength = 4;
+    return NULL;
+  }
+  return (uint8_t *)(&dummy_report);
+}
+
+uint8_t *Joystick_GetIdleValue(uint16_t Length)
+{
+  if (Length == 0) {
+    pInformation->Ctrl_Info.Usb_wLength = 1;
+    return NULL;
+  }
+  return (uint8_t *)(&IdleValue);
+}
+
 /**
   * @brief  Get the protocol value
   * @param  Length: length
@@ -384,23 +417,9 @@ RESULT Joystick_SetProtocol(void)
   */
 uint8_t *Joystick_GetProtocolValue(uint16_t Length)
 {
-  if (Length == 0)
-  {
+  if (!Length == 0) {
     pInformation->Ctrl_Info.Usb_wLength = 1;
     return NULL;
   }
-  else
-  {
-    return (uint8_t *)(&ProtocolValue);
-  }
+  return (uint8_t *)(&ProtocolValue);
 }
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
