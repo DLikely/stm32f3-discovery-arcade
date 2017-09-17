@@ -38,8 +38,7 @@
   */
 
 /* USB Standard Device Descriptor */
-const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] =
-  {
+const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] = {
     0x12,                       /*bLength */
     USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
     0x00,                       /*bcdUSB */
@@ -48,6 +47,7 @@ const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] =
     0x00,                       /*bDeviceSubClass*/
     0x00,                       /*bDeviceProtocol*/
     0x40,                       /*bMaxPacketSize 64*/
+
     /* I'm cheating by using another vendor's idVendor and idProduct. This is
      * because I need the multireport quirk enabled in Linux, and there doesn't
      * seem to be a way to enable it generically. This VID/DID pair is for the
@@ -58,18 +58,12 @@ const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] =
      * and idProduct fields */
     0x8f, 0x0e,                 /*idVendor (0x0e8f)*/
     0x13, 0x30,                 /*idProduct (0x3013)*/
-    0x00,                       /*bcdDevice rel. 2.00*/
-    0x02,
-    1,                          /*Index of string descriptor describing
-                                                  manufacturer */
-    2,                          /*Index of string descriptor describing
-                                                 product*/
-    3,                          /*Index of string descriptor describing the
-                                                 device serial number */
+    0x00, 0x01,                 /*bcdDevice rel. 1.00*/
+    1,                          /*Index of string descriptor describing manufacturer */
+    2,                          /*Index of string descriptor describing product*/
+    3,                          /*Index of string descriptor describing the device serial number */
     0x01                        /*bNumConfigurations*/
-  }
-  ; /* Joystick_DeviceDescriptor */
-
+};
 
 /* USB Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
@@ -82,7 +76,7 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	0x00,         /*iConfiguration: Index of string descriptor describing
 	                                 the configuration*/
 	0xE0,         /*bmAttributes: bus powered */
-	0x32,         /*MaxPower 100 mA: this current is used for detecting Vbus*/
+	0xf0,         /*MaxPower: 480mA */
 
 	/************** Interface Descriptor ****************/
 	/* 09 */
@@ -100,7 +94,7 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	/* 18 */
 	0x09,         /*bLength: HID Descriptor size*/
 	HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
-	0x00, 0x01,   /*bcdHID: HID Class Spec release number v1.00 */
+	0x10, 0x01,   /*bcdHID: HID Class Spec release number v1.1 */
 	0x00,         /*bCountryCode: Hardware target country*/
 	0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
 	0x22,         /*bDescriptorType*/
@@ -112,7 +106,7 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	USB_ENDPOINT_DESCRIPTOR_TYPE, /*bDescriptorType:*/
 	0x81,          /*bEndpointAddress: Endpoint Address (IN)*/
 	0x03,          /*bmAttributes: Interrupt endpoint*/
-	0x04, 0x00,    /*wMaxPacketSize: 4 Byte max */
+	0x08, 0x00,    /*wMaxPacketSize: 8 Byte max */
 	0x20,          /*bInterval: Polling Interval (32 ms)*/
 	/* 34 */
 };
