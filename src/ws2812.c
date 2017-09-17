@@ -22,7 +22,7 @@
 
 #include <string.h>
 #include "stm32f30x.h"
-#include "main.h"
+#include "ws2812.h"
 
 // The minimum is to have 2 leds (1 per half buffer) in the buffer, this
 // consume 42Bytes and will trigger the DMA interrupt at ~2KHz.
@@ -123,6 +123,19 @@ void ws2812_init(void)
 	/* TIM2 CC1 DMA Request enable */
 	TIM_DMAConfig(TIM2, TIM_DMABase_CCR1, TIM_DMABurstLength_4Transfers);
 	TIM_DMACmd(TIM2, TIM_DMA_CC1, ENABLE);
+}
+
+void ws2812_set_rgbw(uint8_t *p, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
+{
+	*p++ = g;
+	*p++ = r;
+	*p++ = b;
+	*p++ = w;
+}
+
+void ws2812_set_u32(uint8_t *p, uint32_t c)
+{
+	ws2812_set_rgbw(p, c >> 16, c >> 8, c, c >> 24);
 }
 
 static void fillLed(uint8_t *buffer, uint8_t *color)

@@ -25,11 +25,10 @@
   ******************************************************************************
   */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* Define to prevent recursive inclusion ------------------------------------- */
 #ifndef __MAIN_H
 #define __MAIN_H
 
-/* Includes ------------------------------------------------------------------*/
 #include "stm32f30x.h"
 #include "stm32f3_discovery.h"
 #include <stdio.h>
@@ -43,17 +42,10 @@
 #include "stm32f30x_it.h"
 #include "usb_desc.h"
 
-
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void USB_Config (void);
+void USB_Config(void);
 void Acc_Config(void);
-void Acc_ReadData(float* pfData);
-
-void ws2812_init(void);
-void ws2812_send(uint8_t (*color)[4], int len);
+void Acc_ReadData(float *pfData);
 
 #endif /* __MAIN_H */
 
