@@ -6,7 +6,7 @@
 #	Your *.c source files here:
 SRCS = \
 	main.c errno.c hw_config.c stm32f30x_it.c stm32f3_discovery.c system_stm32f30x.c \
-	usb_desc.c usb_endp.c usb_istr.c usb_prop.c usb_pwr.c ws2812.c
+	usb_desc.c usb_endp.c usb_istr.c usb_prop.c usb_pwr.c ws2812.c acc.c
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
 PROJ_NAME=main
