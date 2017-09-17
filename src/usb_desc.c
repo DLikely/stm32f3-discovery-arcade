@@ -25,44 +25,34 @@
   ******************************************************************************
   */
 
-/* Includes ------------------------------------------------------------------*/
-#include "usb_lib.h"
 #include "usb_desc.h"
-
-/** @addtogroup STM32F3_Discovery_Peripheral_Examples
-  * @{
-  */
-
-/** @addtogroup USB_Example
-  * @{
-  */
 
 /* USB Standard Device Descriptor */
 const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] = {
-    0x12,                       /*bLength */
-    USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
-    0x00,                       /*bcdUSB */
-    0x02,
-    0x00,                       /*bDeviceClass*/
-    0x00,                       /*bDeviceSubClass*/
-    0x00,                       /*bDeviceProtocol*/
-    0x40,                       /*bMaxPacketSize 64*/
+	0x12,                       /*bLength */
+	USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
+	0x00,                       /*bcdUSB */
+	0x02,
+	0x00,                       /*bDeviceClass*/
+	0x00,                       /*bDeviceSubClass*/
+	0x00,                       /*bDeviceProtocol*/
+	0x40,                       /*bMaxPacketSize 64*/
 
-    /* I'm cheating by using another vendor's idVendor and idProduct. This is
-     * because I need the multireport quirk enabled in Linux, and there doesn't
-     * seem to be a way to enable it generically. This VID/DID pair is for the
-     * GreenAsia Dual USB joypad device. The core USB HID driver in Linux sets
-     * HID_QUIRK_MULTI_REPORT with it sees this VID/UID pair.
-     *
-     * There's got to be a better way to do this without abusing the idVendor
-     * and idProduct fields */
-    0x8f, 0x0e,                 /*idVendor (0x0e8f)*/
-    0x13, 0x30,                 /*idProduct (0x3013)*/
-    0x00, 0x01,                 /*bcdDevice rel. 1.00*/
-    1,                          /*Index of string descriptor describing manufacturer */
-    2,                          /*Index of string descriptor describing product*/
-    3,                          /*Index of string descriptor describing the device serial number */
-    0x01                        /*bNumConfigurations*/
+	/* I'm cheating by using another vendor's idVendor and idProduct. This is
+	 * because I need the multireport quirk enabled in Linux, and there doesn't
+	 * seem to be a way to enable it generically. This VID/DID pair is for the
+	 * GreenAsia Dual USB joypad device. The core USB HID driver in Linux sets
+	 * HID_QUIRK_MULTI_REPORT with it sees this VID/UID pair.
+	 *
+	 * There's got to be a better way to do this without abusing the idVendor
+	 * and idProduct fields */
+	0x8f, 0x0e,                 /*idVendor (0x0e8f)*/
+	0x13, 0x30,                 /*idProduct (0x3013)*/
+	0x00, 0x01,                 /*bcdDevice rel. 1.00*/
+	1,                          /*Index of string descriptor describing manufacturer */
+	2,                          /*Index of string descriptor describing product*/
+	3,                          /*Index of string descriptor describing the device serial number */
+	0x01                        /*bNumConfigurations*/
 };
 
 /* USB Configuration Descriptor */
@@ -73,8 +63,7 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	JOYSTICK_SIZ_CONFIG_DESC, 0x00, /* wTotalLength: Bytes returned */
 	0x01,         /*bNumInterfaces: 1 interface*/
 	0x01,         /*bConfigurationValue: Configuration value*/
-	0x00,         /*iConfiguration: Index of string descriptor describing
-	                                 the configuration*/
+	0x00,         /*iConfiguration: Index of string descriptor describing the configuration*/
 	0xE0,         /*bmAttributes: bus powered */
 	0xf0,         /*MaxPower: 480mA */
 
@@ -119,23 +108,23 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 		0xA1, 0x00,    /*Collection(Physical)*/
 			0x85, 0x01,    /* Report ID 1 */
 			/* Buttons */
-			0x05, 0x09,    /*Usage Page(Buttons)*/		/* 8 */
+			0x05, 0x09,    /*Usage Page(Buttons)*/
 			0x19, 0x01,    /*Usage Minimum(1)*/
 			0x29, 0x08,    /*Usage Maximum(8)*/
 			0x15, 0x00,    /*Logical Minimum(0)*/
-			0x25, 0x01,    /*Logical Maximum(1)*/		/* 16 */
+			0x25, 0x01,    /*Logical Maximum(1)*/
 			0x75, 0x01,    /*Report Size(1)*/
 			0x95, 0x08,    /*Report Count(8)*/
 			0x81, 0x02,    /*Input(Variable)*/
 			/* X/Y Axis */
-			0x05, 0x01,    /*Usage Page(Generic Desktop)*/	/* 24 */
+			0x05, 0x01,    /*Usage Page(Generic Desktop)*/
 			0x09, 0x30,    /*Usage(X axis)*/
 			0x09, 0x31,    /*Usage(Y axis)*/
-			0x15, 0x80,    /*Logical Minimum(-128)*//* 32 */
+			0x15, 0x80,    /*Logical Minimum(-128)*/
 			0x25, 0x7f,    /*Logical Maximum(127)*/
 			0x75, 0x08,    /*Report Size(8)*/
 			0x95, 0x02,    /*Report Count(2)*/
-			0x81, 0x02,    /*Input(Variable, Relative)*//* 40 */
+			0x81, 0x02,    /*Input(Variable, Relative)*/
 		0xC0,          /*End Collection*/
 	0xC0,          /*End Collection*/
 #endif
@@ -147,23 +136,23 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 		0xA1, 0x00,    /*Collection(Physical)*/
 			0x85, 0x02,    /* Report ID 2 */
 			/* Buttons */
-			0x05, 0x09,    /*Usage Page(Buttons)*/		/* 8 */
+			0x05, 0x09,    /*Usage Page(Buttons)*/
 			0x19, 0x01,    /*Usage Minimum(1)*/
 			0x29, 0x08,    /*Usage Maximum(8)*/
 			0x15, 0x00,    /*Logical Minimum(0)*/
-			0x25, 0x01,    /*Logical Maximum(1)*/		/* 16 */
+			0x25, 0x01,    /*Logical Maximum(1)*/
 			0x75, 0x01,    /*Report Size(1)*/
 			0x95, 0x08,    /*Report Count(8)*/
 			0x81, 0x02,    /*Input(Variable)*/
 			/* X/Y Axis */
-			0x05, 0x01,    /*Usage Page(Generic Desktop)*/	/* 24 */
+			0x05, 0x01,    /*Usage Page(Generic Desktop)*/
 			0x09, 0x30,    /*Usage(X axis)*/
 			0x09, 0x31,    /*Usage(Y axis)*/
-			0x15, 0x80,    /*Logical Minimum(-128)*//* 32 */
+			0x15, 0x80,    /*Logical Minimum(-128)*/
 			0x25, 0x7f,    /*Logical Maximum(127)*/
 			0x75, 0x08,    /*Report Size(8)*/
 			0x95, 0x02,    /*Report Count(2)*/
-			0x81, 0x02,    /*Input(Variable, Relative)*//* 40 */
+			0x81, 0x02,    /*Input(Variable, Relative)*/
 		0xC0,          /*End Collection*/
 	0xC0,          /*End Collection*/
 #endif
@@ -175,23 +164,23 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 		0xA1, 0x00,    /*Collection(Physical)*/
 			0x85, 0x03,    /* Report ID 3 */
 			/* Buttons */
-			0x05, 0x09,    /*Usage Page(Buttons)*/		/* 8 */
+			0x05, 0x09,    /*Usage Page(Buttons)*/
 			0x19, 0x01,    /*Usage Minimum(1)*/
 			0x29, 0x08,    /*Usage Maximum(8)*/
 			0x15, 0x00,    /*Logical Minimum(0)*/
-			0x25, 0x01,    /*Logical Maximum(1)*/		/* 16 */
+			0x25, 0x01,    /*Logical Maximum(1)*/
 			0x75, 0x01,    /*Report Size(1)*/
 			0x95, 0x08,    /*Report Count(8)*/
 			0x81, 0x02,    /*Input(Variable)*/
 			/* X/Y Axis */
-			0x05, 0x01,    /*Usage Page(Generic Desktop)*/	/* 24 */
+			0x05, 0x01,    /*Usage Page(Generic Desktop)*/
 			0x09, 0x30,    /*Usage(X axis)*/
 			0x09, 0x31,    /*Usage(Y axis)*/
-			0x15, 0x80,    /*Logical Minimum(-128)*//* 32 */
+			0x15, 0x80,    /*Logical Minimum(-128)*/
 			0x25, 0x7f,    /*Logical Maximum(127)*/
 			0x75, 0x08,    /*Report Size(8)*/
 			0x95, 0x02,    /*Report Count(2)*/
-			0x81, 0x02,    /*Input(Variable, Relative)*//* 40 */
+			0x81, 0x02,    /*Input(Variable, Relative)*/
 		0xC0,          /*End Collection*/
 	0xC0,          /*End Collection*/
 #endif
@@ -203,23 +192,23 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 		0xA1, 0x00,    /*Collection(Physical)*/
 			0x85, 0x04,    /* Report ID 4 */
 			/* Buttons */
-			0x05, 0x09,    /*Usage Page(Buttons)*/		/* 8 */
+			0x05, 0x09,    /*Usage Page(Buttons)*/
 			0x19, 0x01,    /*Usage Minimum(1)*/
 			0x29, 0x08,    /*Usage Maximum(8)*/
 			0x15, 0x00,    /*Logical Minimum(0)*/
-			0x25, 0x01,    /*Logical Maximum(1)*/		/* 16 */
+			0x25, 0x01,    /*Logical Maximum(1)*/
 			0x75, 0x01,    /*Report Size(1)*/
 			0x95, 0x08,    /*Report Count(8)*/
 			0x81, 0x02,    /*Input(Variable)*/
 			/* X/Y Axis */
-			0x05, 0x01,    /*Usage Page(Generic Desktop)*/	/* 24 */
+			0x05, 0x01,    /*Usage Page(Generic Desktop)*/
 			0x09, 0x30,    /*Usage(X axis)*/
 			0x09, 0x31,    /*Usage(Y axis)*/
-			0x15, 0x80,    /*Logical Minimum(-128)*//* 32 */
+			0x15, 0x80,    /*Logical Minimum(-128)*/
 			0x25, 0x7f,    /*Logical Maximum(127)*/
 			0x75, 0x08,    /*Report Size(8)*/
 			0x95, 0x02,    /*Report Count(2)*/
-			0x81, 0x02,    /*Input(Variable, Relative)*//* 40 */
+			0x81, 0x02,    /*Input(Variable, Relative)*/
 		0xC0,          /*End Collection*/
 	0xC0,          /*End Collection*/
 #endif
@@ -230,11 +219,11 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 		0xA1, 0x00,    /*Collection(Physical)*/
 			0x85, 0x05,    /* Report ID 5 */
 			/* Buttons */
-			0x05, 0x09,    /*Usage Page(Buttons)*/		/* 8 */
+			0x05, 0x09,    /*Usage Page(Buttons)*/
 			0x19, 0x01,    /*Usage Minimum(1)*/
 			0x29, 0x03,    /*Usage Maximum(3)*/
 			0x15, 0x00,    /*Logical Minimum(0)*/
-			0x25, 0x01,    /*Logical Maximum(1)*/		/* 16 */
+			0x25, 0x01,    /*Logical Maximum(1)*/
 			0x75, 0x01,    /*Report Size(1)*/
 			0x95, 0x03,    /*Report Count(8)*/
 			0x81, 0x02,    /*Input(Variable)*/
@@ -243,58 +232,43 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 			0x95, 0x01,    /*Report Count(1)*/
 			0x81, 0x01,    /*Input(Constant)*/
 			/* X/Y Axis */
-			0x05, 0x01,    /*Usage Page(Generic Desktop)*/	/* 24 */
+			0x05, 0x01,    /*Usage Page(Generic Desktop)*/
 			0x09, 0x30,    /*Usage(X axis)*/
 			0x09, 0x31,    /*Usage(Y axis)*/
-			0x15, 0x80,    /*Logical Minimum(-128)*//* 32 */
+			0x15, 0x80,    /*Logical Minimum(-128)*/
 			0x25, 0x7f,    /*Logical Maximum(127)*/
 			0x75, 0x08,    /*Report Size(8)*/
 			0x95, 0x02,    /*Report Count(2)*/
-			0x81, 0x06,    /*Input(Variable, Relative)*//* 40 */
+			0x81, 0x06,    /*Input(Variable, Relative)*/
 		0xC0,          /*End Collection*/
 	0xC0           /*End Collection*/
 };
 
 /* USB String Descriptors (optional) */
-const uint8_t Joystick_StringLangID[JOYSTICK_SIZ_STRING_LANGID] =
-  {
-    JOYSTICK_SIZ_STRING_LANGID,
-    USB_STRING_DESCRIPTOR_TYPE,
-    0x09,
-    0x04
-  }
-  ; /* LangID = 0x0409: U.S. English */
+const uint8_t Joystick_StringLangID[JOYSTICK_SIZ_STRING_LANGID] = {
+	JOYSTICK_SIZ_STRING_LANGID,
+	USB_STRING_DESCRIPTOR_TYPE,
+	0x09, 0x04 /* LangID = 0x0409: U.S. English */
+};
 
-const uint8_t Joystick_StringVendor[JOYSTICK_SIZ_STRING_VENDOR] =
-  {
-    JOYSTICK_SIZ_STRING_VENDOR, /* Size of Vendor string */
-    USB_STRING_DESCRIPTOR_TYPE,  /* bDescriptorType*/
-    /* Manufacturer: "SecretLab         " */
-    'S', 0, 'e', 0, 'c', 0, 'r', 0, 'e', 0, 't', 0, 'L', 0, 'a', 0,
-    'b', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0, ' ', 0,
-    ' ', 0, ' ', 0
-  };
+const uint8_t Joystick_StringVendor[JOYSTICK_SIZ_STRING_VENDOR] = {
+	JOYSTICK_SIZ_STRING_VENDOR, /* Size of Vendor string */
+	USB_STRING_DESCRIPTOR_TYPE,  /* bDescriptorType*/
+	/* Manufacturer: "SecretLab         " */
+	'S', 0, 'e', 0, 'c', 0, 'r', 0, 'e', 0, 't', 0, 'L', 0, 'a', 0, 'b', 0,
+};
 
-const uint8_t Joystick_StringProduct[JOYSTICK_SIZ_STRING_PRODUCT] =
-  {
-    JOYSTICK_SIZ_STRING_PRODUCT,          /* bLength */
-    USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-    '4', 0, 'P', 0, 'l', 0, 'y', 0, 'r', 0, ' ', 0, 'J', 0,
-    'o', 0, 'y', 0, 's', 0, 't', 0, 'i', 0, 'c', 0, 'k', 0
-  };
-uint8_t Joystick_StringSerial[JOYSTICK_SIZ_STRING_SERIAL] =
-  {
-    JOYSTICK_SIZ_STRING_SERIAL,           /* bLength */
-    USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-    'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, '1', 0, '0', 0
-  };
+const uint8_t Joystick_StringProduct[JOYSTICK_SIZ_STRING_PRODUCT] = {
+	JOYSTICK_SIZ_STRING_PRODUCT,          /* bLength */
+	USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
+	'4', 0, 'P', 0, 'l', 0, 'y', 0, 'r', 0, ' ', 0, 'J', 0,
+	'o', 0, 'y', 0, 's', 0, 't', 0, 'i', 0, 'c', 0, 'k', 0
+};
 
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
+uint8_t Joystick_StringSerial[JOYSTICK_SIZ_STRING_SERIAL] = {
+	JOYSTICK_SIZ_STRING_SERIAL,           /* bLength */
+	USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
+	'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, '1', 0, '0', 0
+};
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
