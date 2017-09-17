@@ -28,7 +28,10 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "platform_config.h"
+#include "stm32f30x_it.h"
+#include "usb_istr.h"
+#include "usb_pwr.h"
 
 /** @addtogroup STM32F3_Discovery_Peripheral_Examples
   * @{

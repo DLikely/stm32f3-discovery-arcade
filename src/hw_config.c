@@ -26,19 +26,11 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "platform_config.h"
+#include "stm32f3_discovery.h"
+#include "usb_pwr.h"
+#include "usb_desc.h"
 
-/** @addtogroup STM32F3_Discovery_Peripheral_Examples
-  * @{
-  */
-
-/** @addtogroup USB_Example
-  * @{
-  */
-
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 ErrorStatus HSEStartUpStatus;
 EXTI_InitTypeDef EXTI_InitStructure;

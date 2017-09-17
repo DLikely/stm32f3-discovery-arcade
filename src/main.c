@@ -26,10 +26,22 @@
   */
 
 
-/* Includes ------------------------------------------------------------------ */
-#include "main.h"
+/* Includes ------------------------------------------------------------------*/
 #include <string.h>
+#include "stm32f30x.h"
+#include "stm32f3_discovery.h"
+#include <stdio.h>
+#include "stm32f3_discovery_lsm303dlhc.h"
+#include "usb_lib.h"
+#include "hw_config.h"
+#include "usb_pwr.h"
+#include "platform_config.h"
+#include "math.h"
+#include "usb_istr.h"
+#include "stm32f30x_it.h"
+#include "usb_desc.h"
 #include "ws2812.h"
+
 
 /* LED numbers for PWM channels. Note: LED numbers starts at '1'. 0 is reserved
  * to mean 'no LED' */
@@ -56,26 +68,19 @@
 #define PLR3_COLOR {0,0,0xff,0}
 #define PLR4_COLOR {0xff,0xff,0,0}
 
-#define PI                         (float)     3.14159265f
+#define PI ((float) 3.14159265f)
 
-#define LSM_Acc_Sensitivity_2g     (float)     1.0f	/* !< accelerometer
-							 * sensitivity with 2 g
-							 * full scale [LSB/mg] */
-#define LSM_Acc_Sensitivity_4g     (float)     0.5f	/* !< accelerometer
-							 * sensitivity with 4 g
-							 * full scale [LSB/mg] */
-#define LSM_Acc_Sensitivity_8g     (float)     0.25f	/* !< accelerometer
-							 * sensitivity with 8 g
-							 * full scale [LSB/mg] */
-#define LSM_Acc_Sensitivity_16g    (float)     0.0834f	/* !< accelerometer
-							 * sensitivity with 12 g
-							 * full scale [LSB/mg] */
+#define LSM_Acc_Sensitivity_2g     ((float) 1.0f)	/* !< accelerometer sensitivity with 2 g full scale [LSB/mg] */
+#define LSM_Acc_Sensitivity_4g     ((float) 0.5f)	/* !< accelerometer sensitivity with 4 g full scale [LSB/mg] */
+#define LSM_Acc_Sensitivity_8g     ((float) 0.25f)	/* !< accelerometer sensitivity with 8 g full scale [LSB/mg] */
+#define LSM_Acc_Sensitivity_16g    ((float) 0.0834f)	/* !< accelerometer sensitivity with 12 g full scale [LSB/mg] */
 
-/* Private variables --------------------------------------------------------- */
+/* Private variables ---------------------------------------------------------*/
 RCC_ClocksTypeDef RCC_Clocks;
 __IO uint32_t TimingDelay = 0;
 
 float AccBuffer[3] = {0};
+uint8_t led_buffer[LEDS_PER_CHANNEL * 4][4];
 
 __IO uint8_t DataReady = 0;
 __IO uint8_t PrevXferComplete = 1;
@@ -118,7 +123,7 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS + 1] = {
 		.y = {{GPIOD, GPIO_Pin_8}, {GPIOD, GPIO_Pin_10},},
 		.btns = {
 			{GPIOD, GPIO_Pin_11, PLR1_LEDS + 1},	/* A */
-			{GPIOD, GPIO_Pin_9, PLR1_LEDS + 3},	/* B */
+			{GPIOD, GPIO_Pin_9,  PLR1_LEDS + 3},	/* B */
 			{GPIOB, GPIO_Pin_15, PLR1_LEDS + 2},	/* X */
 			{GPIOB, GPIO_Pin_13, PLR1_LEDS + 5},	/* Y */
 			{GPIOB, GPIO_Pin_11, PLR1_LEDS + 4},	/* L */
@@ -135,14 +140,14 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS + 1] = {
 		.x = {{GPIOD, GPIO_Pin_2}, {GPIOD, GPIO_Pin_0}},
 		.y = {{GPIOC, GPIO_Pin_11}, {GPIOA, GPIO_Pin_15}},
 		.btns = {
-			{GPIOC, GPIO_Pin_9, PLR2_LEDS + 1},	/* A */
-			{GPIOC, GPIO_Pin_8, PLR2_LEDS + 3},	/* B */
-			{GPIOA, GPIO_Pin_8, PLR2_LEDS + 2},	/* X */
-			{GPIOF, GPIO_Pin_6, PLR2_LEDS + 5},	/* Y */
+			{GPIOC, GPIO_Pin_9,  PLR2_LEDS + 1},	/* A */
+			{GPIOC, GPIO_Pin_8,  PLR2_LEDS + 3},	/* B */
+			{GPIOA, GPIO_Pin_8,  PLR2_LEDS + 2},	/* X */
+			{GPIOF, GPIO_Pin_6,  PLR2_LEDS + 5},	/* Y */
 			{GPIOC, GPIO_Pin_10, PLR2_LEDS + 4},	/* L */
 			{GPIOC, GPIO_Pin_12, PLR2_LEDS},	/* R */
-			{GPIOD, GPIO_Pin_4, PLR2_SS_LEDS},	/* Selec+t */
-			{GPIOD, GPIO_Pin_6, PLR2_SS_LEDS + 1},	/* Start */
+			{GPIOD, GPIO_Pin_4,  PLR2_SS_LEDS},	/* Select */
+			{GPIOD, GPIO_Pin_6,  PLR2_SS_LEDS + 1},	/* Start */
 		},
 		.report = gamepad2_report,
 		.color = PLR2_COLOR,
@@ -153,14 +158,14 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS + 1] = {
 		.x = {{GPIOF, GPIO_Pin_2}, {GPIOA, GPIO_Pin_4},},
 		.y = {{GPIOA, GPIO_Pin_9}, {GPIOB, GPIO_Pin_0},},
 		.btns = {
-			{GPIOE, GPIO_Pin_7, PLR3_LEDS + 1},	/* A */
-			{GPIOB, GPIO_Pin_1, PLR3_LEDS + 3},	/* B */
+			{GPIOE, GPIO_Pin_7,  PLR3_LEDS + 1},	/* A */
+			{GPIOB, GPIO_Pin_1,  PLR3_LEDS + 3},	/* B */
 			{GPIOA, GPIO_Pin_10, PLR3_LEDS + 2},	/* X */
-			{GPIOF, GPIO_Pin_4, PLR3_LEDS + 5},	/* Y */
-			{GPIOC, GPIO_Pin_3, PLR3_LEDS + 4},	/* L */
-			{GPIOC, GPIO_Pin_1, PLR3_LEDS},	/* R */
-			{GPIOC, GPIO_Pin_2, PLR3_SS_LEDS},	/* Select */
-			{GPIOC, GPIO_Pin_0, PLR3_SS_LEDS + 1},	/* Start */
+			{GPIOF, GPIO_Pin_4,  PLR3_LEDS + 5},	/* Y */
+			{GPIOC, GPIO_Pin_3,  PLR3_LEDS + 4},	/* L */
+			{GPIOC, GPIO_Pin_1,  PLR3_LEDS},	/* R */
+			{GPIOC, GPIO_Pin_2,  PLR3_SS_LEDS},	/* Select */
+			{GPIOC, GPIO_Pin_0,  PLR3_SS_LEDS + 1},	/* Start */
 		},
 		.report = gamepad3_report,
 		.color = PLR3_COLOR,
@@ -171,14 +176,14 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS + 1] = {
 		.x = {{GPIOF, GPIO_Pin_10}, {GPIOC, GPIO_Pin_13},},
 		.y = {{GPIOB, GPIO_Pin_9}, {GPIOB, GPIO_Pin_5},},
 		.btns = {
-			{GPIOD, GPIO_Pin_1, PLR4_LEDS + 1},	/* A */
-			{GPIOD, GPIO_Pin_3, PLR4_LEDS + 3},	/* B */
-			{GPIOD, GPIO_Pin_5, PLR4_LEDS + 2},	/* X */
-			{GPIOD, GPIO_Pin_7, PLR4_LEDS + 5},	/* Y */
-			{GPIOB, GPIO_Pin_4, PLR4_LEDS + 4},	/* L */
-			{GPIOB, GPIO_Pin_8, PLR4_LEDS},	/* R */
-			{GPIOF, GPIO_Pin_9, PLR4_SS_LEDS},	/* Select */
-			{GPIOE, GPIO_Pin_6, PLR4_SS_LEDS + 1},	/* Start */
+			{GPIOD, GPIO_Pin_1,  PLR4_LEDS + 1},	/* A */
+			{GPIOD, GPIO_Pin_3,  PLR4_LEDS + 3},	/* B */
+			{GPIOD, GPIO_Pin_5,  PLR4_LEDS + 2},	/* X */
+			{GPIOD, GPIO_Pin_7,  PLR4_LEDS + 5},	/* Y */
+			{GPIOB, GPIO_Pin_4,  PLR4_LEDS + 4},	/* L */
+			{GPIOB, GPIO_Pin_8,  PLR4_LEDS},	/* R */
+			{GPIOF, GPIO_Pin_9,  PLR4_SS_LEDS},	/* Select */
+			{GPIOE, GPIO_Pin_6,  PLR4_SS_LEDS + 1},	/* Start */
 		},
 		.report = gamepad4_report,
 		.color = PLR4_COLOR,
@@ -186,15 +191,13 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS + 1] = {
 #endif
 	{
 		.btns = {
-			{GPIOF, GPIO_Pin_6, TRACKBALL_LEDS},	/* Y */
-			{GPIOC, GPIO_Pin_8, 0},	/* B */
-			{GPIOC, GPIO_Pin_9, 0},	/* A */
+			{GPIOF, GPIO_Pin_6,  TRACKBALL_LEDS},	/* Y */
+			{GPIOC, GPIO_Pin_8,  0},		/* B */
+			{GPIOC, GPIO_Pin_9,  0},		/* A */
 		},
 		.report = trackball_report,
 	}
 };
-
-uint8_t led_buffer[LEDS_PER_CHANNEL * 4][4];
 
 void gpio_init_input(const struct gpio *gpio)
 {
@@ -384,106 +387,6 @@ void encoder_init(void)
 	TIM_Cmd(TIM4, ENABLE);
 }
 
-int main(void)
-{
-	int i = 0;
-	int cindex = 0;
-	int current_gamepad = 0;
-
-	/* SysTick end of count event each 10ms */
-	RCC_GetClocksFreq(&RCC_Clocks);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOD, ENABLE);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE);
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	SysTick_Config(RCC_Clocks.HCLK_Frequency / 500);
-
-	/* Initialize LEDs and User Button available on STM32F3-Discovery board */
-	STM_EVAL_LEDInit(LED3);
-	STM_EVAL_LEDInit(LED4);
-	STM_EVAL_LEDInit(LED5);
-	STM_EVAL_LEDInit(LED6);
-	STM_EVAL_LEDInit(LED7);
-	STM_EVAL_LEDInit(LED8);
-	STM_EVAL_LEDInit(LED9);
-	STM_EVAL_LEDInit(LED10);
-	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
-
-	STM_EVAL_LEDOn(LED3);
-
-	/* Set up the pins */
-	for (i = 0; i < NUM_JOYSTICKS; i++)
-		gamepad_init(&gamepads[i]);
-	encoder_init();
-	ws2812_init();
-
-	memset(led_buffer, 0, sizeof(led_buffer));
-	ws2812_send(led_buffer, LEDS_PER_CHANNEL);
-
-	/* Wait for two timer ticks */
-	while (DataReady < 2);
-	DataReady = 0;
-
-	/* Configure the USB */
-	USB_Config();
-	STM_EVAL_LEDOn(LED4);
-
-	/* Accelerometer Configuration */
-	Acc_Config();
-	STM_EVAL_LEDOn(LED5);
-
-	STM_EVAL_LEDOn(LED6);
-
-	/* Infinite loop */
-	while (1) {
-		/* Wait for two timer ticks */
-		while (DataReady < 2);
-		DataReady = 0;
-
-		for (i = 0; i < 8; i++)
-			STM_EVAL_LEDOff(i);
-
-		if (current_gamepad == 4)
-			trackball_update(&gamepads[current_gamepad]);
-		else
-			gamepad_update(&gamepads[current_gamepad]);
-
-		for (i = 0; i < NUM_JOYSTICKS; i++)
-			gamepad_update_leds(&gamepads[i]);
-
-		if (gamepads[current_gamepad].report[4]) {
-			while (PrevXferComplete != 1);
-
-			gamepads[current_gamepad].report[4] = 0;
-			/* Reset the control token to inform upper layer that a
-			 * transfer is ongoing */
-			PrevXferComplete = 0;
-			/* Copy report position info in ENDP1 Tx Packet Memory
-			 * Area */
-			USB_SIL_Write(EP1_IN, (uint8_t *) gamepads[current_gamepad].report, 4);
-			/* Enable endpoint for transmission */
-			SetEPTxValid(ENDP1);
-		}
-		current_gamepad = (current_gamepad + 1) % (NUM_JOYSTICKS + 1);
-
-		/* Get Data Accelerometer */
-		Acc_ReadData(AccBuffer);
-
-		for (i = 0; i < 3; i++)
-			AccBuffer[i] /= 100.0f;
-
-		/* 'Throb' one of the buttons */
-		cindex++;
-		led_buffer[15][1] = (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1;
-
-		ws2812_send(led_buffer, LEDS_PER_CHANNEL);
-	}
-}
-
 /**
   * @brief  Configure the USB.
   * @param  None
@@ -517,8 +420,7 @@ void USB_Config(void)
 
 	USB_Init();
 
-	while (bDeviceState != CONFIGURED) {
-	}
+	while (bDeviceState != CONFIGURED);
 }
 
 /**
@@ -644,9 +546,108 @@ void assert_failed(uint8_t * file, uint32_t line)
 	 * file, line) */
 
 	/* Infinite loop */
-	while (1) {
-	}
+	while (1);
 }
 #endif
+
+int main(void)
+{
+	int i = 0;
+	int cindex = 0;
+	int current_gamepad = 0;
+
+	/* SysTick end of count event each 10ms */
+	RCC_GetClocksFreq(&RCC_Clocks);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOD, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOE, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOF, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+	SysTick_Config(RCC_Clocks.HCLK_Frequency / 500);
+
+	/* Initialize LEDs and User Button available on STM32F3-Discovery board */
+	STM_EVAL_LEDInit(LED3);
+	STM_EVAL_LEDInit(LED4);
+	STM_EVAL_LEDInit(LED5);
+	STM_EVAL_LEDInit(LED6);
+	STM_EVAL_LEDInit(LED7);
+	STM_EVAL_LEDInit(LED8);
+	STM_EVAL_LEDInit(LED9);
+	STM_EVAL_LEDInit(LED10);
+	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
+
+	STM_EVAL_LEDOn(LED3);
+
+	/* Set up the pins */
+	for (i = 0; i < NUM_JOYSTICKS; i++)
+		gamepad_init(&gamepads[i]);
+	encoder_init();
+	ws2812_init();
+
+	memset(led_buffer, 0, sizeof(led_buffer));
+	ws2812_send(led_buffer, LEDS_PER_CHANNEL);
+
+	/* Wait for two timer ticks */
+	while (DataReady < 2);
+	DataReady = 0;
+
+	/* Configure the USB */
+	USB_Config();
+	STM_EVAL_LEDOn(LED4);
+
+	/* Accelerometer Configuration */
+	Acc_Config();
+	STM_EVAL_LEDOn(LED5);
+
+	STM_EVAL_LEDOn(LED6);
+
+	/* Infinite loop */
+	while (1) {
+		/* Wait for two timer ticks */
+		while (DataReady < 2);
+		DataReady = 0;
+
+		for (i = 0; i < 8; i++)
+			STM_EVAL_LEDOff(i);
+
+		if (current_gamepad == 4)
+			trackball_update(&gamepads[current_gamepad]);
+		else
+			gamepad_update(&gamepads[current_gamepad]);
+
+		for (i = 0; i < NUM_JOYSTICKS; i++)
+			gamepad_update_leds(&gamepads[i]);
+
+		if (gamepads[current_gamepad].report[4]) {
+			while (PrevXferComplete != 1);
+
+			gamepads[current_gamepad].report[4] = 0;
+			/* Reset the control token to inform upper layer that a
+			 * transfer is ongoing */
+			PrevXferComplete = 0;
+			/* Copy report position info in ENDP1 Tx Packet Memory
+			 * Area */
+			USB_SIL_Write(EP1_IN, (uint8_t *) gamepads[current_gamepad].report, 4);
+			/* Enable endpoint for transmission */
+			SetEPTxValid(ENDP1);
+		}
+		current_gamepad = (current_gamepad + 1) % (NUM_JOYSTICKS + 1);
+
+		/* Get Data Accelerometer */
+		Acc_ReadData(AccBuffer);
+
+		for (i = 0; i < 3; i++)
+			AccBuffer[i] /= 100.0f;
+
+		/* 'Throb' one of the buttons */
+		cindex++;
+		led_buffer[15][1] = (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1;
+
+		ws2812_send(led_buffer, LEDS_PER_CHANNEL);
+	}
+}
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
