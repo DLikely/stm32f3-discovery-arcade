@@ -415,6 +415,13 @@ void USB_Config(void)
 	while (bDeviceState != CONFIGURED);
 }
 
+void EP1_IN_Callback(void)
+{
+	/* Set the transfer complete token to inform upper layer that the current
+	transfer has been complete */
+	PrevXferComplete = 1;
+}
+
 #ifdef  USE_FULL_ASSERT
 
 /**

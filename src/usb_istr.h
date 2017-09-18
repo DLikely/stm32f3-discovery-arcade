@@ -34,11 +34,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usb_conf.h"
 
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
-
 void USB_Istr(void);
 
 /* function prototypes Automatically built defining related macros */

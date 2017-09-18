@@ -36,7 +36,6 @@ ErrorStatus HSEStartUpStatus;
 EXTI_InitTypeDef EXTI_InitStructure;
 
 /* Extern variables ----------------------------------------------------------*/
-extern __IO uint8_t PrevXferComplete;
 
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
