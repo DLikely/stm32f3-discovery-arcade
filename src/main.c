@@ -63,10 +63,10 @@
 #define TRACKBALL_LEDS (NEOPIXEL_CHANNEL_2+16)
 
 /* Player color assignment */
-#define PLR1_COLOR {0,0xff,0,0}
-#define PLR2_COLOR {0xff,0,0,0}
-#define PLR3_COLOR {0,0,0xff,0}
-#define PLR4_COLOR {0xff,0xff,0,0}
+#define PLR1_COLOR COLOR(0,0xff,0,0)
+#define PLR2_COLOR COLOR(0xff,0,0,0)
+#define PLR3_COLOR COLOR(0,0,0xff,0)
+#define PLR4_COLOR COLOR(0xff,0xff,0,0)
 
 /* Private variables ---------------------------------------------------------*/
 RCC_ClocksTypeDef RCC_Clocks;
@@ -101,7 +101,7 @@ struct gpio {
 };
 
 struct gamepad_cfg {
-	uint8_t color[4];
+	uint32_t color;
 	struct gpio x[2];
 	struct gpio y[2];
 	struct gpio btns[8];
@@ -253,7 +253,7 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 			if (tmp)
 				memset(led, 0, 4);
 			else
-				memcpy(led, gpcfg->color, 4);
+				ws2812_set_u32(led, gpcfg->color);
 		}
 	}
 	gamepad_update_single(gpcfg, 1, btn_state);
@@ -318,7 +318,7 @@ void trackball_update(const struct gamepad_cfg *gpcfg)
 
 	color = Wheel(color_pos);
 	for (i = 0; i < 7; i++)
-		memcpy(&led_buffer[gpcfg->btns[0].led + i - 1], &color, 4);
+		ws2812_set_u32(led_buffer[(gpcfg->btns[0].led + i - 1)], color);
 
 	for (i = 0; i < 3; i++)
 		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
@@ -528,8 +528,7 @@ int main(void)
 
 		/* 'Throb' one of the buttons */
 		cindex++;
-		led_buffer[15][1] = (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1;
-
+		ws2812_set_rgbw(led_buffer[15], 0, (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1, 0, 0);
 		ws2812_send(led_buffer, LEDS_PER_CHANNEL);
 	}
 }
