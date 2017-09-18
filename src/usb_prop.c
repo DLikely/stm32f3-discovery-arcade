@@ -72,33 +72,6 @@ USER_STANDARD_REQUESTS User_Standard_Requests = {
 	Joystick_SetDeviceAddress
 };
 
-ONE_DESCRIPTOR Device_Descriptor = {
-	(uint8_t *) Joystick_DeviceDescriptor,
-	JOYSTICK_SIZ_DEVICE_DESC
-};
-
-ONE_DESCRIPTOR Config_Descriptor = {
-	(uint8_t *) Joystick_ConfigDescriptor,
-	JOYSTICK_SIZ_CONFIG_DESC
-};
-
-ONE_DESCRIPTOR Joystick_Report_Descriptor = {
-	(uint8_t *) Joystick_ReportDescriptor,
-	JOYSTICK_SIZ_REPORT_DESC
-};
-
-ONE_DESCRIPTOR Mouse_Hid_Descriptor = {
-	(uint8_t *) Joystick_ConfigDescriptor + JOYSTICK_OFF_HID_DESC,
-	JOYSTICK_SIZ_HID_DESC
-};
-
-ONE_DESCRIPTOR String_Descriptor[4] = {
-	{(uint8_t *) Joystick_StringLangID, JOYSTICK_SIZ_STRING_LANGID},
-	{(uint8_t *) Joystick_StringVendor, JOYSTICK_SIZ_STRING_VENDOR},
-	{(uint8_t *) Joystick_StringProduct, JOYSTICK_SIZ_STRING_PRODUCT},
-	{(uint8_t *) Joystick_StringSerial, JOYSTICK_SIZ_STRING_SERIAL}
-};
-
 /**
   * @brief  Joystick Mouse init routine.
   * @param  None
@@ -132,7 +105,7 @@ void Joystick_Reset(void)
 	pInformation->Current_Interface = 0;	/* the default Interface */
 
 	/* Current Feature initialization */
-	pInformation->Current_Feature = Joystick_ConfigDescriptor[7];
+	pInformation->Current_Feature = Config_Descriptor.Descriptor[7];
 
 	SetBTABLE(BTABLE_ADDRESS);
 

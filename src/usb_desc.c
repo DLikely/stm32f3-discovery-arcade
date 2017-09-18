@@ -27,9 +27,12 @@
 
 #include "usb_desc.h"
 
+#define ONE_DESC_DATA(d) { .Descriptor = ((uint8_t*)d), .Descriptor_Size = sizeof(d) }
+
 /* USB Standard Device Descriptor */
+#define JOYSTICK_SIZ_DEVICE_DESC (18)
 const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] = {
-	0x12,                       /*bLength */
+	JOYSTICK_SIZ_DEVICE_DESC,  /*bLength */
 	USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
 	0x00,                       /*bcdUSB */
 	0x02,
@@ -46,17 +49,24 @@ const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] = {
 	 *
 	 * There's got to be a better way to do this without abusing the idVendor
 	 * and idProduct fields */
-	0x8f, 0x0e,                 /*idVendor (0x0e8f)*/
-	0x13, 0x30,                 /*idProduct (0x3013)*/
-	0x00, 0x01,                 /*bcdDevice rel. 1.00*/
-	1,                          /*Index of string descriptor describing manufacturer */
-	2,                          /*Index of string descriptor describing product*/
-	3,                          /*Index of string descriptor describing the device serial number */
-	0x01                        /*bNumConfigurations*/
+	0x8f, 0x0e, /*idVendor (0x0e8f)*/
+	0x13, 0x30, /*idProduct (0x3013)*/
+	0x00, 0x01, /*bcdDevice rel. 1.00*/
+	1,          /*Index of string descriptor describing manufacturer */
+	2,          /*Index of string descriptor describing product*/
+	3,          /*Index of string descriptor describing the device serial number */
+	0x01        /*bNumConfigurations*/
 };
+
+ONE_DESCRIPTOR Device_Descriptor = ONE_DESC_DATA(Joystick_DeviceDescriptor);
 
 /* USB Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
+#define JOYSTICK_SIZ_CONFIG_DESC  (34)
+#define JOYSTICK_SIZ_HID_DESC     (9)
+#define JOYSTICK_OFF_HID_DESC     (12)
+#define JOYSTICK_SIZ_REPORT_DESC  ((44*NUM_JOYSTICKS)+52)
+
 const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	0x09, /* bLength: Configuration Descriptor size */
 	USB_CONFIGURATION_DESCRIPTOR_TYPE, /* bDescriptorType: Configuration */
@@ -68,7 +78,6 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	0xf0,         /*MaxPower: 480mA */
 
 	/************** Interface Descriptor ****************/
-	/* 09 */
 	0x09,         /*bLength: Interface Descriptor size*/
 	USB_INTERFACE_DESCRIPTOR_TYPE,/*bDescriptorType: Interface descriptor type*/
 	0x00,         /*bInterfaceNumber: Number of Interface*/
@@ -80,8 +89,7 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	0,            /*iInterface: Index of string descriptor*/
 
 	/******************** HID Descriptor ********************/
-	/* 18 */
-	0x09,         /*bLength: HID Descriptor size*/
+	JOYSTICK_SIZ_HID_DESC,         /*bLength: HID Descriptor size*/
 	HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
 	0x10, 0x01,   /*bcdHID: HID Class Spec release number v1.1 */
 	0x00,         /*bCountryCode: Hardware target country*/
@@ -90,14 +98,18 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] = {
 	JOYSTICK_SIZ_REPORT_DESC, 0x00, /*wItemLength: Total length of Report descriptor*/
 
 	/******************** Endpoint Descriptor ********************/
-	/* 27 */
 	0x07,          /*bLength: Endpoint Descriptor size*/
 	USB_ENDPOINT_DESCRIPTOR_TYPE, /*bDescriptorType:*/
 	0x81,          /*bEndpointAddress: Endpoint Address (IN)*/
 	0x03,          /*bmAttributes: Interrupt endpoint*/
 	0x08, 0x00,    /*wMaxPacketSize: 8 Byte max */
 	0x20,          /*bInterval: Polling Interval (32 ms)*/
-	/* 34 */
+};
+
+ONE_DESCRIPTOR Config_Descriptor = ONE_DESC_DATA(Joystick_ConfigDescriptor);
+ONE_DESCRIPTOR Mouse_Hid_Descriptor = {
+	.Descriptor = (uint8_t *) Joystick_ConfigDescriptor + JOYSTICK_OFF_HID_DESC,
+	.Descriptor_Size = JOYSTICK_SIZ_HID_DESC
 };
 
 const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
@@ -244,13 +256,17 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] = {
 	0xC0           /*End Collection*/
 };
 
+ONE_DESCRIPTOR Joystick_Report_Descriptor = ONE_DESC_DATA(Joystick_ReportDescriptor);
+
 /* USB String Descriptors (optional) */
+#define JOYSTICK_SIZ_STRING_LANGID  (4)
 const uint8_t Joystick_StringLangID[JOYSTICK_SIZ_STRING_LANGID] = {
 	JOYSTICK_SIZ_STRING_LANGID,
 	USB_STRING_DESCRIPTOR_TYPE,
 	0x09, 0x04 /* LangID = 0x0409: U.S. English */
 };
 
+#define JOYSTICK_SIZ_STRING_VENDOR  (20)
 const uint8_t Joystick_StringVendor[JOYSTICK_SIZ_STRING_VENDOR] = {
 	JOYSTICK_SIZ_STRING_VENDOR, /* Size of Vendor string */
 	USB_STRING_DESCRIPTOR_TYPE,  /* bDescriptorType*/
@@ -258,6 +274,7 @@ const uint8_t Joystick_StringVendor[JOYSTICK_SIZ_STRING_VENDOR] = {
 	'S', 0, 'e', 0, 'c', 0, 'r', 0, 'e', 0, 't', 0, 'L', 0, 'a', 0, 'b', 0,
 };
 
+#define JOYSTICK_SIZ_STRING_PRODUCT (30)
 const uint8_t Joystick_StringProduct[JOYSTICK_SIZ_STRING_PRODUCT] = {
 	JOYSTICK_SIZ_STRING_PRODUCT,          /* bLength */
 	USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
@@ -265,10 +282,18 @@ const uint8_t Joystick_StringProduct[JOYSTICK_SIZ_STRING_PRODUCT] = {
 	'o', 0, 'y', 0, 's', 0, 't', 0, 'i', 0, 'c', 0, 'k', 0
 };
 
+#define JOYSTICK_SIZ_STRING_SERIAL  (26)
 uint8_t Joystick_StringSerial[JOYSTICK_SIZ_STRING_SERIAL] = {
 	JOYSTICK_SIZ_STRING_SERIAL,           /* bLength */
 	USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
 	'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, '1', 0, '0', 0
+};
+
+ONE_DESCRIPTOR String_Descriptor[] = {
+	ONE_DESC_DATA(Joystick_StringLangID),
+	ONE_DESC_DATA(Joystick_StringVendor),
+	ONE_DESC_DATA(Joystick_StringProduct),
+	ONE_DESC_DATA(Joystick_StringSerial),
 };
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
