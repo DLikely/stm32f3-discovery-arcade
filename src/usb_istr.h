@@ -54,13 +54,8 @@ void EP5_OUT_Callback(void);
 void EP6_OUT_Callback(void);
 void EP7_OUT_Callback(void);
 
-
 #ifdef CTR_CALLBACK
 void CTR_Callback(void);
-#endif
-
-#ifdef DOVR_CALLBACK
-void DOVR_Callback(void);
 #endif
 
 #ifdef ERR_CALLBACK
