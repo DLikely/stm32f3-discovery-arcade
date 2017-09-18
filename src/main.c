@@ -281,26 +281,18 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 		STM_EVAL_LEDOn(LED10);
 }
 
-//Helper defines
-#define newColor(r, g, b, w) (((uint32_t)(w) << 24) | ((uint32_t)(r) << 16) | \
-                              ((uint32_t)(g) <<  8) | (b))
-#define White(c) ((uint8_t)((c >> 24) & 0xFF))
-#define Red(c) ((uint8_t)((c >> 16) & 0xFF))
-#define Green(c) ((uint8_t)((c >> 8) & 0xFF))
-#define Blue(c) ((uint8_t)(c & 0xFF))
-
 uint32_t Wheel(uint8_t WheelPos)
 {
 	WheelPos = 255 - WheelPos;
 	if (WheelPos < 85) {
-		return newColor(255 - WheelPos * 3, 0, WheelPos * 3, 0);
+		return COLOR(255 - WheelPos * 3, 0, WheelPos * 3, 0);
 	}
 	if (WheelPos < 170) {
 		WheelPos -= 85;
-		return newColor(0, WheelPos * 3, 255 - WheelPos * 3, 0);
+		return COLOR(0, WheelPos * 3, 255 - WheelPos * 3, 0);
 	}
 	WheelPos -= 170;
-	return newColor(WheelPos * 3, 255 - WheelPos * 3, 0, 0);
+	return COLOR(WheelPos * 3, 255 - WheelPos * 3, 0, 0);
 }
 
 
