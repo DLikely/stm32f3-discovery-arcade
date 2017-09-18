@@ -75,7 +75,7 @@ __IO uint32_t TimingDelay = 0;
 uint8_t led_buffer[LEDS_PER_CHANNEL * 4][4];
 
 __IO uint8_t DataReady = 0;
-__IO uint8_t PrevXferComplete = 1;
+__IO bool usb_transfer_pending = 0;
 
 /* Input report buffers */
 /* Report ID, Buttons, X, Y, change_flag */
@@ -259,10 +259,7 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
 	gamepad_update_single(gpcfg, 3, gamepad_read_axis(gpcfg->y));
-}
 
-void gamepad_update_leds(const struct gamepad_cfg *gpcfg)
-{
 	/* Show direction on the Compass Rose LEDs */
 	if (gpcfg->report[2] < 0)
 		if (gpcfg->report[3] < 0)
@@ -415,11 +412,30 @@ void USB_Config(void)
 	while (bDeviceState != CONFIGURED);
 }
 
+void send_next_report(void)
+{
+	int i;
+
+	/* Look for a report ready to be sent */
+	for (i = 0; i < NUM_JOYSTICKS + 1; i++) {
+		if (gamepads[i].report[4]) {
+			usb_transfer_pending = 1;
+			gamepads[i].report[4] = 0;
+			/* Copy report position info in ENDP1 Tx Packet Memory Area */
+			USB_SIL_Write(EP1_IN, (uint8_t *) gamepads[i].report, 4);
+			/* Enable endpoint for transmission */
+			SetEPTxValid(ENDP1);
+			return;
+		}
+	}
+
+	/* There are no ready reports. Say transfers are finished */
+	usb_transfer_pending = 0;
+}
+
 void EP1_IN_Callback(void)
 {
-	/* Set the transfer complete token to inform upper layer that the current
-	transfer has been complete */
-	PrevXferComplete = 1;
+	send_next_report();
 }
 
 #ifdef  USE_FULL_ASSERT
@@ -446,7 +462,6 @@ int main(void)
 {
 	int i = 0;
 	int cindex = 0;
-	int current_gamepad = 0;
 
 	/* SysTick end of count event each 10ms */
 	RCC_GetClocksFreq(&RCC_Clocks);
@@ -498,35 +513,20 @@ int main(void)
 
 	/* Infinite loop */
 	while (1) {
-		/* Wait for two timer ticks */
-		while (DataReady < 2);
+		/* Wait for two timer ticks and the USB transfers to finish */
+		while (usb_transfer_pending || (DataReady < 2));
 		DataReady = 0;
 
+		/* Turn off all the joystick LEDs */
 		for (i = 0; i < 8; i++)
 			STM_EVAL_LEDOff(i);
 
-		if (current_gamepad == 4)
-			trackball_update(&gamepads[current_gamepad]);
-		else
-			gamepad_update(&gamepads[current_gamepad]);
-
+		/* Get updates from each of the logical controls */
 		for (i = 0; i < NUM_JOYSTICKS; i++)
-			gamepad_update_leds(&gamepads[i]);
+			gamepad_update(&gamepads[i]);
+		trackball_update(&gamepads[NUM_JOYSTICKS]);
 
-		if (gamepads[current_gamepad].report[4]) {
-			while (PrevXferComplete != 1);
-
-			gamepads[current_gamepad].report[4] = 0;
-			/* Reset the control token to inform upper layer that a
-			 * transfer is ongoing */
-			PrevXferComplete = 0;
-			/* Copy report position info in ENDP1 Tx Packet Memory
-			 * Area */
-			USB_SIL_Write(EP1_IN, (uint8_t *) gamepads[current_gamepad].report, 4);
-			/* Enable endpoint for transmission */
-			SetEPTxValid(ENDP1);
-		}
-		current_gamepad = (current_gamepad + 1) % (NUM_JOYSTICKS + 1);
+		send_next_report();
 
 		/* Get Data Accelerometer */
 		Acc_ReadData(AccBuffer);
