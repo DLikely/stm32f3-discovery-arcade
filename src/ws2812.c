@@ -24,17 +24,25 @@
 #include "stm32f30x.h"
 #include "ws2812.h"
 
-// The minimum is to have 2 leds (1 per half buffer) in the buffer, this
-// consume 42Bytes and will trigger the DMA interrupt at ~2KHz.
-// Putting 2 there will divide by 2 the interrupt frequency but will also 
-// double the memory consumption (no free lunch ;-)
-#define LED_PER_HALF 1
+/* Number of bytes to send in each 1/2 DMA buffer transfer. This directly
+ * translates into the size of the DMA temporary buffer. The minimum is 4
+ * bytes. This equals a DMA buffer size of 256 bytes (each byte transfer
+ * requires 8 bytes in the DMA buffer x 4 bytes transfered x 4 channels x 2
+ * half buffers) and will trigger the DMA interrupt at ~2KHz. Doubling the
+ * number of transfer bytes will divide the interrupt frequency by 2, but will
+ * also double the memory consumption (no free lunch ;-)
+ */
+#define BYTES_PER_LED (8)
+#define LEDS_PER_PIXEL (4)
+#define BYTES_PER_PIXEL (BYTES_PER_LED * LEDS_PER_PIXEL)
+#define WS2812_DMA_TXFR_SIZE (BYTES_PER_PIXEL)
+#define WS2812_DMA_BUF_SIZE (WS2812_NUM_CHANS * WS2812_DMA_TXFR_SIZE)
 
 static union {
-	uint8_t buffer[4*2*LED_PER_HALF*32];
+	uint8_t buffer[2*WS2812_DMA_BUF_SIZE];
 	struct {
-		uint8_t begin[4*LED_PER_HALF*32];
-		uint8_t end[4*LED_PER_HALF*32];
+		uint8_t begin[WS2812_DMA_BUF_SIZE];
+		uint8_t end[WS2812_DMA_BUF_SIZE];
 	} __attribute__((packed));
 } led_dma;
 
@@ -127,8 +135,8 @@ void ws2812_init(void)
 
 void ws2812_set_rgbw(uint8_t *p, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
 {
-	*p++ = r;
 	*p++ = g;
+	*p++ = r;
 	*p++ = b;
 	*p++ = w;
 }
@@ -138,51 +146,39 @@ void ws2812_set_u32(uint8_t *p, uint32_t c)
 	ws2812_set_rgbw(p, c >> 16, c >> 8, c, c >> 24);
 }
 
-static void fillLed(uint8_t *buffer, uint8_t *color)
+static void fillBits(uint8_t *buffer, uint8_t val)
 {
 	int i;
 
-	for(i=0; i<8; i++, buffer+=4) // GREEN data
-		*buffer = ((color[1]<<i) & 0x80)?17:9;
-	for(i=0; i<8; i++, buffer+=4) // RED
-		*buffer = ((color[0]<<i) & 0x80)?17:9;
-	for(i=0; i<8; i++, buffer+=4) // BLUE
-		*buffer = ((color[2]<<i) & 0x80)?17:9;
-	for(i=0; i<8; i++, buffer+=4) // WHITE
-		*buffer = ((color[3]<<i) & 0x80)?17:9;
+	for(i = 0; i < 8; i++, buffer += WS2812_NUM_CHANS)
+		*buffer = ((val << i) & 0x80) ? 17 : 9;
 }
 
-static int current_led = 0;
-static int total_led = 0;
-static uint8_t (*color_led)[4] = NULL;
+static int led_index = 0;
+static int led_data_size = 0;
+static uint8_t *led_data = NULL;
 
 static void fillLeds(uint8_t *buffer)
 {
-	int i;
+	int i, j;
 
-	memset(buffer, 0, 32*4);
-	for(i=0; (i<LED_PER_HALF) && (current_led<total_led+2); i++, current_led++, buffer+=32*4) {
-		if (current_led<total_led) {
-			fillLed(&buffer[0], color_led[current_led]);
-			fillLed(&buffer[1], color_led[current_led+total_led]);
-			fillLed(&buffer[2], color_led[current_led+total_led*2]);
-			fillLed(&buffer[3], color_led[current_led+total_led*3]);
-		}
+	memset(buffer, 0, WS2812_DMA_BUF_SIZE);
+	for (i = 0; i < LEDS_PER_PIXEL; i++, led_index++, buffer += BYTES_PER_LED * WS2812_NUM_CHANS) {
+		if (led_index < led_data_size)
+			for (j = 0; j < WS2812_NUM_CHANS; j++)
+				fillBits(buffer + j, led_data[(led_data_size * j) + led_index]);
 	}
 }
 
-void ws2812_send(uint8_t (*color)[4], int len)
+void ws2812_send(uint8_t *p, uint16_t n)
 {
-	if(len<1)
+	if (!n)
 		return;
 
-	//Wait for previous transfer to be finished
-	//xSemaphoreTake(allLedDone, portMAX_DELAY);
-
 	// Set interrupt context ...
-	current_led = 0;
-	total_led = len;
-	color_led = color;
+	led_index = 0;
+	led_data = p;
+	led_data_size = n;
 
 	/* Preload both buffers with data */
 	fillLeds(led_dma.begin);
@@ -199,30 +195,27 @@ void DMA1_Channel5_IRQHandler(void)
 {
 	uint8_t * buffer;
 
-	if (total_led == 0)
-	{
+	if (led_data_size == 0) {
 		TIM_Cmd(TIM2, DISABLE);
 		DMA_Cmd(DMA1_Channel5, DISABLE);
 	}
 
-	if (DMA_GetITStatus(DMA1_IT_HT5))
-	{
+	if (DMA_GetITStatus(DMA1_IT_HT5)) {
 		DMA_ClearITPendingBit(DMA1_IT_HT5);
 		buffer = led_dma.begin;
 	}
 
-	if (DMA_GetITStatus(DMA1_IT_TC5))
-	{
+	if (DMA_GetITStatus(DMA1_IT_TC5)) {
 		DMA_ClearITPendingBit(DMA1_IT_TC5);
 		buffer = led_dma.end;
 	}
 
 	fillLeds(buffer);
 
-	if (current_led >= total_led+2) {
+	if (led_index >= led_data_size+WS2812_DMA_TXFR_SIZE) {
 		TIM_Cmd(TIM2, DISABLE);			// disable Timer 1
 		DMA_Cmd(DMA1_Channel5, DISABLE); 	// disable DMA channel 2
-		total_led = 0;
+		led_data_size = 0;
 	}
 }
 

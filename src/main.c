@@ -75,12 +75,12 @@
 RCC_ClocksTypeDef RCC_Clocks;
 __IO uint32_t TimingDelay = 0;
 
-uint8_t neopixel_buf[NEOPIXELS_PER_CH * NEOPIXEL_CH_COUNT][NEOPIXEL_SIZE];
+uint8_t neopixel_buf[NEOPIXEL_BUFSIZE * NEOPIXEL_CH_COUNT];
 static uint8_t* neopixel_addr(int num)
 {
 	if ((num < 1) || (num > NEOPIXELS_PER_CH * NEOPIXEL_CH_COUNT))
 		return NULL;
-	return neopixel_buf[(num - 1)];
+	return &neopixel_buf[(num - 1) * NEOPIXEL_SIZE];
 }
 
 __IO uint8_t DataReady = 0;
@@ -492,7 +492,7 @@ int main(void)
 	ws2812_init();
 
 	memset(neopixel_buf, 0, sizeof(neopixel_buf));
-	ws2812_send(neopixel_buf, NEOPIXELS_PER_CH);
+	ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 
 	/* Wait for two timer ticks */
 	while (DataReady < 2);
@@ -534,7 +534,7 @@ int main(void)
 		/* 'Throb' one of the buttons */
 		cindex++;
 		ws2812_set_rgbw(neopixel_addr(16), 0, (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1, 0, 0);
-		ws2812_send(neopixel_buf, NEOPIXELS_PER_CH);
+		ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 	}
 }
 
