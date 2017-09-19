@@ -45,22 +45,25 @@
 
 /* LED numbers for PWM channels. Note: LED numbers starts at '1'. 0 is reserved
  * to mean 'no LED' */
-#define LEDS_PER_CHANNEL (32)
-#define NEOPIXEL_CHANNEL_1 (1)
-#define NEOPIXEL_CHANNEL_2 (LEDS_PER_CHANNEL+1)
-#define NEOPIXEL_CHANNEL_3 (LEDS_PER_CHANNEL*2+1)
-#define NEOPIXEL_CHANNEL_4 (LEDS_PER_CHANNEL*3+1)
+#define NEOPIXELS_PER_CH (32)		/* Up to 32 pixels on each channel */
+#define NEOPIXEL_SIZE (4)			/* 4 bytes per pixel */
+#define NEOPIXEL_CH1 (1)
+#define NEOPIXEL_CH2 (NEOPIXELS_PER_CH+1)
+#define NEOPIXEL_CH3 (NEOPIXELS_PER_CH*2+1)
+#define NEOPIXEL_CH4 (NEOPIXELS_PER_CH*3+1)
+#define NEOPIXEL_CH_COUNT (4)
+#define NEOPIXEL_BUFSIZE (NEOPIXELS_PER_CH * NEOPIXEL_SIZE)
 
 /* LED numbers assigned to each player's control cluster */
-#define PLR1_LEDS (NEOPIXEL_CHANNEL_1)
-#define PLR1_SS_LEDS (NEOPIXEL_CHANNEL_1+14)
-#define PLR2_LEDS (NEOPIXEL_CHANNEL_2+10)
-#define PLR2_SS_LEDS (NEOPIXEL_CHANNEL_2)
-#define PLR3_LEDS (NEOPIXEL_CHANNEL_1+6)
-#define PLR3_SS_LEDS (NEOPIXEL_CHANNEL_1+12)
-#define PLR4_LEDS (NEOPIXEL_CHANNEL_2+4)
-#define PLR4_SS_LEDS (NEOPIXEL_CHANNEL_2+2)
-#define TRACKBALL_LEDS (NEOPIXEL_CHANNEL_2+16)
+#define PLR1_LEDS      (NEOPIXEL_CH1)
+#define PLR1_SS_LEDS   (NEOPIXEL_CH1+14)
+#define PLR2_LEDS      (NEOPIXEL_CH2+10)
+#define PLR2_SS_LEDS   (NEOPIXEL_CH2)
+#define PLR3_LEDS      (NEOPIXEL_CH1+6)
+#define PLR3_SS_LEDS   (NEOPIXEL_CH1+12)
+#define PLR4_LEDS      (NEOPIXEL_CH2+4)
+#define PLR4_SS_LEDS   (NEOPIXEL_CH2+2)
+#define TRACKBALL_LEDS (NEOPIXEL_CH2+16)
 
 /* Player color assignment */
 #define PLR1_COLOR COLOR(0,0xff,0,0)
@@ -72,7 +75,13 @@
 RCC_ClocksTypeDef RCC_Clocks;
 __IO uint32_t TimingDelay = 0;
 
-uint8_t led_buffer[LEDS_PER_CHANNEL * 4][4];
+uint8_t neopixel_buf[NEOPIXELS_PER_CH * NEOPIXEL_CH_COUNT][NEOPIXEL_SIZE];
+static uint8_t* neopixel_addr(int num)
+{
+	if ((num < 1) || (num > NEOPIXELS_PER_CH * NEOPIXEL_CH_COUNT))
+		return NULL;
+	return neopixel_buf[(num - 1)];
+}
 
 __IO uint8_t DataReady = 0;
 __IO bool usb_transfer_pending = 0;
@@ -237,7 +246,7 @@ void gamepad_update_single(const struct gamepad_cfg *gpcfg, int idx, int8_t valu
 void gamepad_update(const struct gamepad_cfg *gpcfg)
 {
 	int8_t tmp, btn_state = 0;
-	uint8_t *led;
+	uint8_t *ledp;
 	int i;
 
 	if (gpcfg->report[4])
@@ -248,13 +257,9 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 		btn_state |= tmp;
 
 		/* Set the button illumination */
-		if (gpcfg->btns[i].led) {
-			led = led_buffer[gpcfg->btns[i].led - 1];
-			if (tmp)
-				memset(led, 0, 4);
-			else
-				ws2812_set_u32(led, gpcfg->color);
-		}
+		ledp = neopixel_addr(gpcfg->btns[i].led);
+		if (ledp)
+			ws2812_set_u32(ledp, tmp ? 0 : gpcfg->color);
 	}
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
@@ -318,7 +323,7 @@ void trackball_update(const struct gamepad_cfg *gpcfg)
 
 	color = Wheel(color_pos);
 	for (i = 0; i < 7; i++)
-		ws2812_set_u32(led_buffer[(gpcfg->btns[0].led + i - 1)], color);
+		ws2812_set_u32(neopixel_addr(gpcfg->btns[0].led + i), color);
 
 	for (i = 0; i < 3; i++)
 		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
@@ -486,8 +491,8 @@ int main(void)
 	encoder_init();
 	ws2812_init();
 
-	memset(led_buffer, 0, sizeof(led_buffer));
-	ws2812_send(led_buffer, LEDS_PER_CHANNEL);
+	memset(neopixel_buf, 0, sizeof(neopixel_buf));
+	ws2812_send(neopixel_buf, NEOPIXELS_PER_CH);
 
 	/* Wait for two timer ticks */
 	while (DataReady < 2);
@@ -528,8 +533,8 @@ int main(void)
 
 		/* 'Throb' one of the buttons */
 		cindex++;
-		ws2812_set_rgbw(led_buffer[15], 0, (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1, 0, 0);
-		ws2812_send(led_buffer, LEDS_PER_CHANNEL);
+		ws2812_set_rgbw(neopixel_addr(16), 0, (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1, 0, 0);
+		ws2812_send(neopixel_buf, NEOPIXELS_PER_CH);
 	}
 }
 
