@@ -80,6 +80,7 @@ uint8_t neopixel_buf[NEOPIXEL_BUFSIZE * NEOPIXEL_CH_COUNT];
 
 struct neopixel_meta {
 	int8_t x, y;
+	int8_t animate_factor;
 };
 
 struct neopixel_meta neopixel_meta[] = {
@@ -126,6 +127,24 @@ struct neopixel_meta neopixel_meta[] = {
 	/* The trackball is lit with 7 LEDs, and it is considered the center
 	 * of the board */
 	[TRACKBALL_LEDS...TRACKBALL_LEDS+6] = { .x = 0, .y = 0 },
+};
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define for_each_array_entry(a, i, ap) \
+	for (i = 0, ap = &a[0]; i < ARRAY_SIZE(a); i++, ap++)
+
+enum effect_mode {
+	EFFECT_STATIC = 0,
+	EFFECT_CIRCLE_IN,
+	EFFECT_CIRCLE_OUT,
+	EFFECT_UP,
+	EFFECT_DOWN,
+	EFFECT_LEFT,
+	EFFECT_RIGHT,
+	EFFECT_SQUARE_IN,
+	EFFECT_SQUARE_OUT,
+	NUM_EFFECTS,
 };
 
 __IO uint8_t DataReady = 0;
@@ -237,13 +256,92 @@ const struct gamepad_cfg gamepads[NUM_JOYSTICKS + 1] = {
 #endif
 	{
 		.btns = {
-			{GPIOF, GPIO_Pin_6,  TRACKBALL_LEDS},	/* Y */
-			{GPIOC, GPIO_Pin_8,  0},		/* B */
-			{GPIOC, GPIO_Pin_9,  0},		/* A */
+			{GPIOF, GPIO_Pin_6,  TRACKBALL_LEDS},	/* Left */
+			{GPIOC, GPIO_Pin_8,  TRACKBALL_LEDS + 1},	/* Right */
+			{GPIOC, GPIO_Pin_9,  TRACKBALL_LEDS + 2},	/* Middle */
+			{.led = TRACKBALL_LEDS + 3},
+			{.led = TRACKBALL_LEDS + 4},
+			{.led = TRACKBALL_LEDS + 5},
+			{.led = TRACKBALL_LEDS + 6},
 		},
 		.report = trackball_report,
 	}
 };
+
+enum effect_mode curr_mode = EFFECT_STATIC;
+
+void effects_prepare(enum effect_mode mode)
+{
+	int i, factor;
+	struct neopixel_meta *nmp;
+
+	mode = mode % NUM_EFFECTS;
+	curr_mode = mode;
+
+	switch (mode) {
+	case EFFECT_UP:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			nmp->animate_factor = nmp->y;
+		break;
+	case EFFECT_DOWN:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			nmp->animate_factor = -nmp->y;
+		break;
+	case EFFECT_LEFT:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			nmp->animate_factor = nmp->x;
+		break;
+	case EFFECT_RIGHT:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			nmp->animate_factor = -nmp->x;
+		break;
+	case EFFECT_CIRCLE_IN:
+		for_each_array_entry(neopixel_meta, i, nmp) {
+			factor = sqrt(((int)nmp->x * nmp->x) + ((int)nmp->y * nmp->y));
+			nmp->animate_factor = factor;
+		}
+		break;
+	case EFFECT_CIRCLE_OUT:
+		for_each_array_entry(neopixel_meta, i, nmp) {
+			factor = sqrt(((int)nmp->x * nmp->x) + ((int)nmp->y * nmp->y));
+			nmp->animate_factor = -factor;
+		}
+		break;
+	case EFFECT_SQUARE_IN:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			nmp->animate_factor = (nmp->x < nmp->y) ? nmp->y : nmp->x;
+		break;
+	case EFFECT_SQUARE_OUT:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			nmp->animate_factor = (nmp->x < nmp->y) ? -nmp->y : -nmp->x;
+		break;
+	default:
+		break;
+	}
+}
+
+void effects_animate(int index)
+{
+	const struct gamepad_cfg *gpc;
+	struct neopixel_meta *nmp;
+	int i, j, led;
+
+	switch(curr_mode) {
+	case EFFECT_STATIC:
+		for_each_array_entry(gamepads, i, gpc) {
+			for (j = 0; j < 8; j++) {
+				led = gpc->btns[j].led;
+				if (led)
+					neopixel_set_u32(&neo1, led-1, gpc->color);
+			}
+		}
+		break;
+	default:
+		for_each_array_entry(neopixel_meta, i, nmp)
+			if (i)
+				neopixel_set_u32(&neo1, i-1, color_wheel((nmp->animate_factor<<2) + (index)));
+	}
+}
 
 void gpio_init_input(const struct gpio *gpio)
 {
@@ -300,10 +398,9 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 		tmp = gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
 		btn_state |= tmp;
 
-		/* Set the button illumination */
-		if (gpcfg->btns[i].led)
-			neopixel_set_u32(&neo1, gpcfg->btns[i].led - 1,
-			                 tmp ? 0 : gpcfg->color);
+		/* Turn off button when pressed */
+		if (gpcfg->btns[i].led && tmp)
+			neopixel_set_u32(&neo1, gpcfg->btns[i].led - 1, 0);
 	}
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
@@ -351,8 +448,9 @@ void trackball_update(const struct gamepad_cfg *gpcfg)
 	lasty = value;
 
 	color = color_wheel(color_pos);
-	for (i = 0; i < 7; i++)
-		neopixel_set_u32(&neo1, gpcfg->btns[0].led - 1 + i, color);
+	if (curr_mode == EFFECT_STATIC)
+		for (i = 0; i < 7; i++)
+			neopixel_set_u32(&neo1, gpcfg->btns[0].led - 1 + i, color);
 
 	for (i = 0; i < 3; i++)
 		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
@@ -521,7 +619,7 @@ int main(void)
 		gamepad_init(&gamepads[i]);
 	encoder_init();
 	ws2812_init();
-	neopixel_init(&neo1, NEO_GRB, NEOPIXELS_PER_CH * 2, neopixel_buf);
+	neopixel_init(&neo1, NEO_GRBW, NEOPIXELS_PER_CH * 2, neopixel_buf);
 	memset(neopixel_buf, 0, sizeof(neopixel_buf));
 
 	/* Send out LED stream and wait for two timer ticks */
@@ -533,6 +631,8 @@ int main(void)
 	ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 	while (DataReady < 2);
 	DataReady = 0;
+
+	effects_prepare(EFFECT_STATIC);
 
 	/* Configure the USB */
 	USB_Config();
@@ -550,6 +650,14 @@ int main(void)
 		while (usb_transfer_pending || (DataReady < 2));
 		DataReady = 0;
 
+		/* Update the animation index and cycle the effect periodically */
+		cindex++;
+		if (cindex > 0x7ff) {
+			cindex = 0;
+			effects_prepare(curr_mode + 1);
+		}
+		effects_animate(cindex);
+
 		/* Turn off all the joystick LEDs */
 		for (i = 0; i < 8; i++)
 			STM_EVAL_LEDOff(i);
@@ -559,6 +667,11 @@ int main(void)
 			gamepad_update(&gamepads[i]);
 		trackball_update(&gamepads[NUM_JOYSTICKS]);
 
+		/* 'Throb' one of the player button LEDs */
+		brightness = (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1;
+		color = color_brightness(gamepads[0].color, brightness);;
+		neopixel_set_u32(&neo1, 15, color);
+
 		send_next_report();
 
 		/* Get Data Accelerometer */
@@ -567,11 +680,6 @@ int main(void)
 		for (i = 0; i < 3; i++)
 			AccBuffer[i] /= 100.0f;
 
-		/* 'Throb' one of the buttons */
-		cindex++;
-		brightness = (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1;
-		color = color_brightness(gamepads[0].color, brightness);;
-		neopixel_set_u32(&neo1, 15, color);
 		ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 	}
 }
