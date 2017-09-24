@@ -78,6 +78,56 @@ __IO uint32_t TimingDelay = 0;
 struct neopixel neo1;
 uint8_t neopixel_buf[NEOPIXEL_BUFSIZE * NEOPIXEL_CH_COUNT];
 
+struct neopixel_meta {
+	int8_t x, y;
+};
+
+struct neopixel_meta neopixel_meta[] = {
+	/* Player 1 */
+	[PLR1_LEDS]     = { .x = -123/4, .y = 42/4 },
+	[PLR1_LEDS + 1] = { .x = -127/4, .y = 3/4 },
+	[PLR1_LEDS + 2] = { .x = -158/4, .y = 46/4 },
+	[PLR1_LEDS + 3] = { .x = -162/4, .y = 6/4 },
+	[PLR1_LEDS + 4] = { .x = -190/4, .y = 28/4 },
+	[PLR1_LEDS + 5] = { .x = -195/4, .y = -10/4 },
+	[PLR1_SS_LEDS]     = { .x = -196/4, .y = 168/4 },
+	[PLR1_SS_LEDS + 1] = { .x = -156/4, .y = 168/4 },
+
+	/* Player 2 */
+	[PLR2_LEDS]     = { .x = 255/4, .y = 55/4 },
+	[PLR2_LEDS + 1] = { .x = 259/4, .y = 17/4 },
+	[PLR2_LEDS + 2] = { .x = 219/4, .y = 52/4 },
+	[PLR2_LEDS + 3] = { .x = 223/4, .y = 13/4 },
+	[PLR2_LEDS + 4] = { .x = 190/4, .y = 28/4 },
+	[PLR2_LEDS + 5] = { .x = 195/4, .y = -11/4 },
+	[PLR2_SS_LEDS]     = { .x = 156/4, .y = 168/4 },
+	[PLR2_SS_LEDS + 1] = { .x = 196/4, .y = 168/4 },
+
+	/* Player 3 */
+	[PLR3_LEDS]     = { .x = -356/4, .y = 72/4 },
+	[PLR3_LEDS + 1] = { .x = -365/4, .y = 44/4 },
+	[PLR3_LEDS + 2] = { .x = -391/4, .y = 81/4 },
+	[PLR3_LEDS + 3] = { .x = -401/4, .y = 43/4 },
+	[PLR3_LEDS + 4] = { .x = -426/4, .y = 69/4 },
+	[PLR3_LEDS + 5] = { .x = -435/4, .y = 30/4 },
+	[PLR3_SS_LEDS]     = { .x = -422/4, .y = 168/4 },
+	[PLR3_SS_LEDS + 1] = { .x = -382/4, .y = 168/4 },
+
+	/* Player 4 */
+	[PLR4_LEDS]     = { .x = 486/4, .y = 103/4 },
+	[PLR4_LEDS + 1] = { .x = 494/4, .y = 65/4 },
+	[PLR4_LEDS + 2] = { .x = 405/4, .y = 95/4 },
+	[PLR4_LEDS + 3] = { .x = 459/4, .y = 57/4 },
+	[PLR4_LEDS + 4] = { .x = 426/4, .y = 68/4 },
+	[PLR4_LEDS + 5] = { .x = 434/4, .y = 30/4 },
+	[PLR4_SS_LEDS]     = { .x = 382/4, .y = 168/4 },
+	[PLR4_SS_LEDS + 1] = { .x = 422/4, .y = 168/4 },
+
+	/* The trackball is lit with 7 LEDs, and it is considered the center
+	 * of the board */
+	[TRACKBALL_LEDS...TRACKBALL_LEDS+6] = { .x = 0, .y = 0 },
+};
+
 __IO uint8_t DataReady = 0;
 __IO bool usb_transfer_pending = 0;
 
