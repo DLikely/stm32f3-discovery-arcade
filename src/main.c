@@ -75,13 +75,8 @@
 RCC_ClocksTypeDef RCC_Clocks;
 __IO uint32_t TimingDelay = 0;
 
+struct neopixel neo1;
 uint8_t neopixel_buf[NEOPIXEL_BUFSIZE * NEOPIXEL_CH_COUNT];
-static uint8_t* neopixel_addr(int num)
-{
-	if ((num < 1) || (num > NEOPIXELS_PER_CH * NEOPIXEL_CH_COUNT))
-		return NULL;
-	return &neopixel_buf[(num - 1) * NEOPIXEL_SIZE];
-}
 
 __IO uint8_t DataReady = 0;
 __IO bool usb_transfer_pending = 0;
@@ -246,7 +241,6 @@ void gamepad_update_single(const struct gamepad_cfg *gpcfg, int idx, int8_t valu
 void gamepad_update(const struct gamepad_cfg *gpcfg)
 {
 	int8_t tmp, btn_state = 0;
-	uint8_t *ledp;
 	int i;
 
 	if (gpcfg->report[4])
@@ -257,9 +251,9 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 		btn_state |= tmp;
 
 		/* Set the button illumination */
-		ledp = neopixel_addr(gpcfg->btns[i].led);
-		if (ledp)
-			ws2812_set_u32(ledp, tmp ? 0 : gpcfg->color);
+		if (gpcfg->btns[i].led)
+			neopixel_set_u32(&neo1, gpcfg->btns[i].led - 1,
+			                 tmp ? 0 : gpcfg->color);
 	}
 	gamepad_update_single(gpcfg, 1, btn_state);
 	gamepad_update_single(gpcfg, 2, gamepad_read_axis(gpcfg->x));
@@ -286,21 +280,6 @@ void gamepad_update(const struct gamepad_cfg *gpcfg)
 		STM_EVAL_LEDOn(LED10);
 }
 
-uint32_t Wheel(uint8_t WheelPos)
-{
-	WheelPos = 255 - WheelPos;
-	if (WheelPos < 85) {
-		return COLOR(255 - WheelPos * 3, 0, WheelPos * 3, 0);
-	}
-	if (WheelPos < 170) {
-		WheelPos -= 85;
-		return COLOR(0, WheelPos * 3, 255 - WheelPos * 3, 0);
-	}
-	WheelPos -= 170;
-	return COLOR(WheelPos * 3, 255 - WheelPos * 3, 0, 0);
-}
-
-
 void trackball_update(const struct gamepad_cfg *gpcfg)
 {
 	static int16_t lastx = 0, lasty = 0;
@@ -321,9 +300,9 @@ void trackball_update(const struct gamepad_cfg *gpcfg)
 	color_pos += gpcfg->report[3] = value - lasty;
 	lasty = value;
 
-	color = Wheel(color_pos);
+	color = color_wheel(color_pos);
 	for (i = 0; i < 7; i++)
-		ws2812_set_u32(neopixel_addr(gpcfg->btns[0].led + i), color);
+		neopixel_set_u32(&neo1, gpcfg->btns[0].led - 1 + i, color);
 
 	for (i = 0; i < 3; i++)
 		btn_state |= gpio_read(&gpcfg->btns[i]) ? 0 : 1 << i;
@@ -459,6 +438,8 @@ int main(void)
 {
 	int i = 0;
 	int cindex = 0;
+	uint8_t brightness;
+	uint32_t color;
 
 	/* SysTick end of count event each 10ms */
 	RCC_GetClocksFreq(&RCC_Clocks);
@@ -490,11 +471,16 @@ int main(void)
 		gamepad_init(&gamepads[i]);
 	encoder_init();
 	ws2812_init();
-
+	neopixel_init(&neo1, NEO_GRB, NEOPIXELS_PER_CH * 2, neopixel_buf);
 	memset(neopixel_buf, 0, sizeof(neopixel_buf));
-	ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 
-	/* Wait for two timer ticks */
+	/* Send out LED stream and wait for two timer ticks */
+	ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
+	while (DataReady < 2);
+	DataReady = 0;
+
+	/* Send out LED stream again to get rid of spurious pixel */
+	ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 	while (DataReady < 2);
 	DataReady = 0;
 
@@ -533,7 +519,9 @@ int main(void)
 
 		/* 'Throb' one of the buttons */
 		cindex++;
-		ws2812_set_rgbw(neopixel_addr(16), 0, (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1, 0, 0);
+		brightness = (cindex & 0x1ff) > 0x100 ? 0x100 - (cindex >> 1) : cindex >> 1;
+		color = color_brightness(gamepads[0].color, brightness);;
+		neopixel_set_u32(&neo1, 15, color);
 		ws2812_send(neopixel_buf, NEOPIXEL_BUFSIZE);
 	}
 }

@@ -24,6 +24,80 @@
 #include "stm32f30x.h"
 #include "ws2812.h"
 
+/* Adjust brightness of single color component
+ * c: color component
+ * b: brightness where 0xff is full bright, and 0 is off */
+uint8_t color_bright_one(uint8_t c, uint8_t b)
+{
+	return ((((int)c) * (((int)b)+1)) >> 8 & 0xff);
+}
+
+/* Adjust brightness of u32 color.
+ * c: RGBW Color in uint32_t format
+ * b: brightness where 0xff is full bright, and 0 is off */
+uint32_t color_brightness(uint32_t c, uint8_t b)
+{
+	return COLOR(color_bright_one(Red(c), b), color_bright_one(Green(c), b),
+	             color_bright_one(Blue(c), b), color_bright_one(White(c), b));
+}
+
+uint32_t color_wheel(uint8_t angle)
+{
+	angle = 255 - angle;
+	if (angle < 85) {
+		return COLOR(255 - angle * 3, 0, angle * 3, 0);
+	}
+	if (angle < 170) {
+		angle -= 85;
+		return COLOR(0, angle * 3, 255 - angle * 3, 0);
+	}
+	angle -= 170;
+	return COLOR(angle * 3, 255 - angle * 3, 0, 0);
+}
+
+
+void neopixel_init(struct neopixel *neo, uint8_t format, uint8_t num, uint8_t *pixels)
+{
+	neo->w_off = (format >> 6) & 0b11;
+	neo->r_off = (format >> 4) & 0b11;
+	neo->g_off = (format >> 2) & 0b11;
+	neo->b_off = (format     ) & 0b11;
+	neo->num_leds = num;
+	neo->pixel_width = (neo->r_off == neo->w_off) ? 3 : 4;
+	neo->pixels = pixels;
+}
+
+void neopixel_set_rgbw(struct neopixel *neo, uint8_t n, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
+{
+	uint8_t *p;
+	if (n >= neo->num_leds)
+		return;
+
+	p = &neo->pixels[n * neo->pixel_width];
+
+	/* Write the color values.
+	 * This is a *little* naive. It blindly writes 4 bytes, even if the
+	 * pixel width is 3. However, it is always the white pixel omitted on
+	 * 3-byte pixels, so by writing it first, no important data gets
+	 * overwritten */
+	p[neo->w_off] = w;
+	p[neo->r_off] = r;
+	p[neo->g_off] = g;
+	p[neo->b_off] = b;
+}
+
+/**
+ * neopixel_set_u32() - Set pixel colour using a single u32 value.
+ *
+ * u32 pixel format is always WRGB, regardless of actual layout used by the
+ * pixels. This is so that portable code can be written without needing to
+ * adapt for the pixel type.
+ */
+void neopixel_set_u32(struct neopixel *neo, uint8_t n, uint32_t c)
+{
+	neopixel_set_rgbw(neo, n, Red(c), Green(c), Blue(c), White(c));
+}
+
 /* Number of bytes to send in each 1/2 DMA buffer transfer. This directly
  * translates into the size of the DMA temporary buffer. The minimum is 4
  * bytes. This equals a DMA buffer size of 256 bytes (each byte transfer
@@ -32,6 +106,7 @@
  * number of transfer bytes will divide the interrupt frequency by 2, but will
  * also double the memory consumption (no free lunch ;-)
  */
+#define WS2812_NUM_CHANS 4
 #define BYTES_PER_LED (8)
 #define LEDS_PER_PIXEL (4)
 #define BYTES_PER_PIXEL (BYTES_PER_LED * LEDS_PER_PIXEL)
@@ -131,19 +206,6 @@ void ws2812_init(void)
 	/* TIM2 CC1 DMA Request enable */
 	TIM_DMAConfig(TIM2, TIM_DMABase_CCR1, TIM_DMABurstLength_4Transfers);
 	TIM_DMACmd(TIM2, TIM_DMA_CC1, ENABLE);
-}
-
-void ws2812_set_rgbw(uint8_t *p, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
-{
-	*p++ = g;
-	*p++ = r;
-	*p++ = b;
-	*p++ = w;
-}
-
-void ws2812_set_u32(uint8_t *p, uint32_t c)
-{
-	ws2812_set_rgbw(p, c >> 16, c >> 8, c, c >> 24);
 }
 
 static void fillBits(uint8_t *buffer, uint8_t val)
