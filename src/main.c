@@ -83,50 +83,53 @@ struct neopixel_meta {
 	int8_t animate_factor;
 };
 
+/* store pixel location with 4mm resolution so it fits in a byte */
+#define PIXEL_META_INIT(_x, _y) { .x = (_x)/4, .y = (_y)/4 }
+
 struct neopixel_meta neopixel_meta[] = {
 	/* Player 1 */
-	[PLR1_LEDS]     = { .x = -123/4, .y = 42/4 },
-	[PLR1_LEDS + 1] = { .x = -127/4, .y = 3/4 },
-	[PLR1_LEDS + 2] = { .x = -158/4, .y = 46/4 },
-	[PLR1_LEDS + 3] = { .x = -162/4, .y = 6/4 },
-	[PLR1_LEDS + 4] = { .x = -190/4, .y = 28/4 },
-	[PLR1_LEDS + 5] = { .x = -195/4, .y = -10/4 },
-	[PLR1_SS_LEDS]     = { .x = -196/4, .y = 168/4 },
-	[PLR1_SS_LEDS + 1] = { .x = -156/4, .y = 168/4 },
+	[PLR1_LEDS]     = PIXEL_META_INIT(-123, 42),
+	[PLR1_LEDS + 1] = PIXEL_META_INIT(-127,  3),
+	[PLR1_LEDS + 2] = PIXEL_META_INIT(-158, 46),
+	[PLR1_LEDS + 3] = PIXEL_META_INIT(-162,  6),
+	[PLR1_LEDS + 4] = PIXEL_META_INIT(-190, 28),
+	[PLR1_LEDS + 5] = PIXEL_META_INIT(-195, -10),
+	[PLR1_SS_LEDS]     = PIXEL_META_INIT(-196, 168),
+	[PLR1_SS_LEDS + 1] = PIXEL_META_INIT(-156, 168),
 
 	/* Player 2 */
-	[PLR2_LEDS]     = { .x = 255/4, .y = 55/4 },
-	[PLR2_LEDS + 1] = { .x = 259/4, .y = 17/4 },
-	[PLR2_LEDS + 2] = { .x = 219/4, .y = 52/4 },
-	[PLR2_LEDS + 3] = { .x = 223/4, .y = 13/4 },
-	[PLR2_LEDS + 4] = { .x = 190/4, .y = 28/4 },
-	[PLR2_LEDS + 5] = { .x = 195/4, .y = -11/4 },
-	[PLR2_SS_LEDS]     = { .x = 156/4, .y = 168/4 },
-	[PLR2_SS_LEDS + 1] = { .x = 196/4, .y = 168/4 },
+	[PLR2_LEDS]     = PIXEL_META_INIT(255, 55),
+	[PLR2_LEDS + 1] = PIXEL_META_INIT(259, 17),
+	[PLR2_LEDS + 2] = PIXEL_META_INIT(219, 52),
+	[PLR2_LEDS + 3] = PIXEL_META_INIT(223, 13),
+	[PLR2_LEDS + 4] = PIXEL_META_INIT(190, 28),
+	[PLR2_LEDS + 5] = PIXEL_META_INIT(195, -11),
+	[PLR2_SS_LEDS]     = PIXEL_META_INIT(156, 168),
+	[PLR2_SS_LEDS + 1] = PIXEL_META_INIT(196, 168),
 
 	/* Player 3 */
-	[PLR3_LEDS]     = { .x = -356/4, .y = 72/4 },
-	[PLR3_LEDS + 1] = { .x = -365/4, .y = 44/4 },
-	[PLR3_LEDS + 2] = { .x = -391/4, .y = 81/4 },
-	[PLR3_LEDS + 3] = { .x = -401/4, .y = 43/4 },
-	[PLR3_LEDS + 4] = { .x = -426/4, .y = 69/4 },
-	[PLR3_LEDS + 5] = { .x = -435/4, .y = 30/4 },
-	[PLR3_SS_LEDS]     = { .x = -422/4, .y = 168/4 },
-	[PLR3_SS_LEDS + 1] = { .x = -382/4, .y = 168/4 },
+	[PLR3_LEDS]     = PIXEL_META_INIT(-356, 72),
+	[PLR3_LEDS + 1] = PIXEL_META_INIT(-365, 44),
+	[PLR3_LEDS + 2] = PIXEL_META_INIT(-391, 81),
+	[PLR3_LEDS + 3] = PIXEL_META_INIT(-401, 43),
+	[PLR3_LEDS + 4] = PIXEL_META_INIT(-426, 69),
+	[PLR3_LEDS + 5] = PIXEL_META_INIT(-435, 30),
+	[PLR3_SS_LEDS]     = PIXEL_META_INIT(-422, 168),
+	[PLR3_SS_LEDS + 1] = PIXEL_META_INIT(-382, 168),
 
 	/* Player 4 */
-	[PLR4_LEDS]     = { .x = 486/4, .y = 103/4 },
-	[PLR4_LEDS + 1] = { .x = 494/4, .y = 65/4 },
-	[PLR4_LEDS + 2] = { .x = 405/4, .y = 95/4 },
-	[PLR4_LEDS + 3] = { .x = 459/4, .y = 57/4 },
-	[PLR4_LEDS + 4] = { .x = 426/4, .y = 68/4 },
-	[PLR4_LEDS + 5] = { .x = 434/4, .y = 30/4 },
-	[PLR4_SS_LEDS]     = { .x = 382/4, .y = 168/4 },
-	[PLR4_SS_LEDS + 1] = { .x = 422/4, .y = 168/4 },
+	[PLR4_LEDS]     = PIXEL_META_INIT(486, 103),
+	[PLR4_LEDS + 1] = PIXEL_META_INIT(494, 65),
+	[PLR4_LEDS + 2] = PIXEL_META_INIT(405, 95),
+	[PLR4_LEDS + 3] = PIXEL_META_INIT(459, 57),
+	[PLR4_LEDS + 4] = PIXEL_META_INIT(426, 68),
+	[PLR4_LEDS + 5] = PIXEL_META_INIT(434, 30),
+	[PLR4_SS_LEDS]     = PIXEL_META_INIT(382, 168),
+	[PLR4_SS_LEDS + 1] = PIXEL_META_INIT(422, 168),
 
 	/* The trackball is lit with 7 LEDs, and it is considered the center
 	 * of the board */
-	[TRACKBALL_LEDS...TRACKBALL_LEDS+6] = { .x = 0, .y = 0 },
+	[TRACKBALL_LEDS...TRACKBALL_LEDS+6] = PIXEL_META_INIT(0, 0),
 };
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
