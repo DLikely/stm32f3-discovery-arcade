@@ -41,18 +41,6 @@ typedef enum _HID_REQUESTS {
 	SET_PROTOCOL
 } HID_REQUESTS;
 
-#define Joystick_GetConfiguration          NOP_Process
-//#define Joystick_SetConfiguration          NOP_Process
-#define Joystick_GetInterface              NOP_Process
-#define Joystick_SetInterface              NOP_Process
-#define Joystick_GetStatus                 NOP_Process
-#define Joystick_ClearFeature              NOP_Process
-#define Joystick_SetEndPointFeature        NOP_Process
-#define Joystick_SetDeviceFeature          NOP_Process
-//#define Joystick_SetDeviceAddress          NOP_Process
-
-#define REPORT_DESCRIPTOR                  0x22
-
 /* Private variables */
 uint32_t ProtocolValue;
 uint32_t IdleValue;
@@ -229,25 +217,6 @@ RESULT Joystick_Get_Interface_Setting(uint8_t Interface, uint8_t AlternateSettin
 	return USB_SUCCESS;
 }
 
-RESULT Joystick_SetIdle(void)
-{
-	uint8_t wValue0 = pInformation->USBwValue0;
-	IdleValue = wValue0;
-	return USB_SUCCESS;
-}
-
-/**
-  * @brief  Joystick Set Protocol request routine.
-  * @param  None.
-  * @retval USB_SUCCESS
-  */
-RESULT Joystick_SetProtocol(void)
-{
-	uint8_t wValue0 = pInformation->USBwValue0;
-	ProtocolValue = wValue0;
-	return USB_SUCCESS;
-}
-
 /**
   * @brief  Handle the no data class specific requests
   * @param  RequestNo: Request Nb.
@@ -259,9 +228,11 @@ RESULT Joystick_NoData_Setup(uint8_t RequestNo)
 		switch (RequestNo) {
 		//case SET_REPORT:
 		case SET_IDLE:
-			return Joystick_SetIdle();
+			IdleValue = pInformation->USBwValue0;
+			return USB_SUCCESS;
 		case SET_PROTOCOL:
-			return Joystick_SetProtocol();
+			ProtocolValue = pInformation->USBwValue0;
+			return USB_SUCCESS;
 		}
 	}
 	return USB_UNSUPPORT;
@@ -307,18 +278,20 @@ uint8_t * Joystick_GetProtocolValue(uint16_t Length)
   */
 RESULT Joystick_Data_Setup(uint8_t RequestNo)
 {
-	uint8_t *(*CopyRoutine) (uint16_t);
+	uint8_t *(*CopyRoutine) (uint16_t) = NULL;
 
-	CopyRoutine = NULL;
 	if ((RequestNo == GET_DESCRIPTOR)
 	    && (Type_Recipient == (STANDARD_REQUEST | INTERFACE_RECIPIENT))
 	    && (pInformation->USBwIndex0 == 0)) {
-
-		if (pInformation->USBwValue1 == REPORT_DESCRIPTOR) {
+		switch (pInformation->USBwValue1) {
+		case HID_REPORT_DESCRIPTOR_TYPE:
 			CopyRoutine = Joystick_GetReportDescriptor;
-		} else if (pInformation->USBwValue1 == HID_DESCRIPTOR_TYPE) {
+			break;
+		case HID_DESCRIPTOR_TYPE:
 			CopyRoutine = Joystick_GetHIDDescriptor;
+			break;
 		}
+
 	} else if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
 		switch (RequestNo) {
 		case GET_REPORT:
@@ -348,29 +321,28 @@ DEVICE Device_Table = {
 };
 
 DEVICE_PROP Device_Property = {
-	Joystick_init,
-	Joystick_Reset,
-	Joystick_Status_In,
-	Joystick_Status_Out,
-	Joystick_Data_Setup,
-	Joystick_NoData_Setup,
-	Joystick_Get_Interface_Setting,
-	Joystick_GetDeviceDescriptor,
-	Joystick_GetConfigDescriptor,
-	Joystick_GetStringDescriptor,
-	0,
-	0x40			/* MAX PACKET SIZE */
+	.Init = Joystick_init,
+	.Reset = Joystick_Reset,
+	.Process_Status_IN = Joystick_Status_In,
+	.Process_Status_OUT = Joystick_Status_Out,
+	.Class_Data_Setup = Joystick_Data_Setup,
+	.Class_NoData_Setup = Joystick_NoData_Setup,
+	.Class_Get_Interface_Setting = Joystick_Get_Interface_Setting,
+	.GetDeviceDescriptor = Joystick_GetDeviceDescriptor,
+	.GetConfigDescriptor = Joystick_GetConfigDescriptor,
+	.GetStringDescriptor = Joystick_GetStringDescriptor,
+	.MaxPacketSize = 0x40,
 };
 
 USER_STANDARD_REQUESTS User_Standard_Requests = {
-	Joystick_GetConfiguration,
-	Joystick_SetConfiguration,
-	Joystick_GetInterface,
-	Joystick_SetInterface,
-	Joystick_GetStatus,
-	Joystick_ClearFeature,
-	Joystick_SetEndPointFeature,
-	Joystick_SetDeviceFeature,
-	Joystick_SetDeviceAddress
+	.User_GetConfiguration = NOP_Process,
+	.User_SetConfiguration = Joystick_SetConfiguration,
+	.User_GetInterface = NOP_Process,
+	.User_SetInterface = NOP_Process,
+	.User_GetStatus = NOP_Process,
+	.User_ClearFeature = NOP_Process,
+	.User_SetEndPointFeature = NOP_Process,
+	.User_SetDeviceFeature = NOP_Process,
+	.User_SetDeviceAddress = Joystick_SetDeviceAddress,
 };
 

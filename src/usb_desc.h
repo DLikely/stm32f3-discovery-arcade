@@ -36,6 +36,7 @@
 #define USB_INTERFACE_DESCRIPTOR_TYPE           0x04
 #define USB_ENDPOINT_DESCRIPTOR_TYPE            0x05
 #define HID_DESCRIPTOR_TYPE                     0x21
+#define HID_REPORT_DESCRIPTOR_TYPE              0x22
 
 #define NUM_JOYSTICKS                           4
 
