@@ -27,50 +27,39 @@
 
 #include "usb_lib.h"
 #include "usb_conf.h"
-#include "usb_prop.h"
 #include "usb_desc.h"
 #include "usb_pwr.h"
 #include "hw_config.h"
 
-/* Private variables --------------------------------------------------------- */
+typedef enum _HID_REQUESTS {
+	GET_REPORT = 1,
+	GET_IDLE,
+	GET_PROTOCOL,
+
+	SET_REPORT = 9,
+	SET_IDLE,
+	SET_PROTOCOL
+} HID_REQUESTS;
+
+#define Joystick_GetConfiguration          NOP_Process
+//#define Joystick_SetConfiguration          NOP_Process
+#define Joystick_GetInterface              NOP_Process
+#define Joystick_SetInterface              NOP_Process
+#define Joystick_GetStatus                 NOP_Process
+#define Joystick_ClearFeature              NOP_Process
+#define Joystick_SetEndPointFeature        NOP_Process
+#define Joystick_SetDeviceFeature          NOP_Process
+//#define Joystick_SetDeviceAddress          NOP_Process
+
+#define REPORT_DESCRIPTOR                  0x22
+
+/* Private variables */
 uint32_t ProtocolValue;
 uint32_t IdleValue;
 
 /* -------------------------------------------------------------------------- */
 /* Structures initializations */
 /* -------------------------------------------------------------------------- */
-
-DEVICE Device_Table = {
-	EP_NUM,
-	1
-};
-
-DEVICE_PROP Device_Property = {
-	Joystick_init,
-	Joystick_Reset,
-	Joystick_Status_In,
-	Joystick_Status_Out,
-	Joystick_Data_Setup,
-	Joystick_NoData_Setup,
-	Joystick_Get_Interface_Setting,
-	Joystick_GetDeviceDescriptor,
-	Joystick_GetConfigDescriptor,
-	Joystick_GetStringDescriptor,
-	0,
-	0x40			/* MAX PACKET SIZE */
-};
-
-USER_STANDARD_REQUESTS User_Standard_Requests = {
-	Joystick_GetConfiguration,
-	Joystick_SetConfiguration,
-	Joystick_GetInterface,
-	Joystick_SetInterface,
-	Joystick_GetStatus,
-	Joystick_ClearFeature,
-	Joystick_SetEndPointFeature,
-	Joystick_SetDeviceFeature,
-	Joystick_SetDeviceAddress
-};
 
 /**
   * @brief  Joystick Mouse init routine.
@@ -171,67 +160,6 @@ void Joystick_Status_Out(void)
 }
 
 /**
-  * @brief  Handle the data class specific requests.
-  * @param  RequestNo: Request Nb.
-  * @retval USB_UNSUPPORT or USB_SUCCESS.
-  */
-RESULT Joystick_Data_Setup(uint8_t RequestNo)
-{
-	uint8_t *(*CopyRoutine) (uint16_t);
-
-	CopyRoutine = NULL;
-	if ((RequestNo == GET_DESCRIPTOR)
-	    && (Type_Recipient == (STANDARD_REQUEST | INTERFACE_RECIPIENT))
-	    && (pInformation->USBwIndex0 == 0)) {
-
-		if (pInformation->USBwValue1 == REPORT_DESCRIPTOR) {
-			CopyRoutine = Joystick_GetReportDescriptor;
-		} else if (pInformation->USBwValue1 == HID_DESCRIPTOR_TYPE) {
-			CopyRoutine = Joystick_GetHIDDescriptor;
-		}
-	} else if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
-		switch (RequestNo) {
-		case GET_REPORT:
-			CopyRoutine = Joystick_GetReport;
-			break;
-		case GET_IDLE:
-			CopyRoutine = Joystick_GetIdleValue;
-			break;
-		case GET_PROTOCOL:
-			CopyRoutine = Joystick_GetProtocolValue;
-			break;
-		}
-	}
-
-	if (!CopyRoutine)
-		return USB_UNSUPPORT;
-
-	pInformation->Ctrl_Info.CopyData = CopyRoutine;
-	pInformation->Ctrl_Info.Usb_wOffset = 0;
-	(*CopyRoutine)(0);
-	return USB_SUCCESS;
-}
-
-/**
-  * @brief  Handle the no data class specific requests
-  * @param  RequestNo: Request Nb.
-  * @retval USB_UNSUPPORT or USB_SUCCESS.
-  */
-RESULT Joystick_NoData_Setup(uint8_t RequestNo)
-{
-	if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
-		switch (RequestNo) {
-		//case SET_REPORT:
-		case SET_IDLE:
-			return Joystick_SetIdle();
-		case SET_PROTOCOL:
-			return Joystick_SetProtocol();
-		}
-	}
-	return USB_UNSUPPORT;
-}
-
-/**
   * @brief  Gets the device descriptor.
   * @param  Length: Length.
   * @retval The address of the device descriptor.
@@ -320,6 +248,25 @@ RESULT Joystick_SetProtocol(void)
 	return USB_SUCCESS;
 }
 
+/**
+  * @brief  Handle the no data class specific requests
+  * @param  RequestNo: Request Nb.
+  * @retval USB_UNSUPPORT or USB_SUCCESS.
+  */
+RESULT Joystick_NoData_Setup(uint8_t RequestNo)
+{
+	if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
+		switch (RequestNo) {
+		//case SET_REPORT:
+		case SET_IDLE:
+			return Joystick_SetIdle();
+		case SET_PROTOCOL:
+			return Joystick_SetProtocol();
+		}
+	}
+	return USB_UNSUPPORT;
+}
+
 uint8_t * Joystick_GetReport(uint16_t Length)
 {
 	static uint8_t dummy_report[] = {0, 0, 0, 0};
@@ -352,3 +299,78 @@ uint8_t * Joystick_GetProtocolValue(uint16_t Length)
 	}
 	return (uint8_t *) (&ProtocolValue);
 }
+
+/**
+  * @brief  Handle the data class specific requests.
+  * @param  RequestNo: Request Nb.
+  * @retval USB_UNSUPPORT or USB_SUCCESS.
+  */
+RESULT Joystick_Data_Setup(uint8_t RequestNo)
+{
+	uint8_t *(*CopyRoutine) (uint16_t);
+
+	CopyRoutine = NULL;
+	if ((RequestNo == GET_DESCRIPTOR)
+	    && (Type_Recipient == (STANDARD_REQUEST | INTERFACE_RECIPIENT))
+	    && (pInformation->USBwIndex0 == 0)) {
+
+		if (pInformation->USBwValue1 == REPORT_DESCRIPTOR) {
+			CopyRoutine = Joystick_GetReportDescriptor;
+		} else if (pInformation->USBwValue1 == HID_DESCRIPTOR_TYPE) {
+			CopyRoutine = Joystick_GetHIDDescriptor;
+		}
+	} else if (Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT)) {
+		switch (RequestNo) {
+		case GET_REPORT:
+			CopyRoutine = Joystick_GetReport;
+			break;
+		case GET_IDLE:
+			CopyRoutine = Joystick_GetIdleValue;
+			break;
+		case GET_PROTOCOL:
+			CopyRoutine = Joystick_GetProtocolValue;
+			break;
+		}
+	}
+
+	if (!CopyRoutine)
+		return USB_UNSUPPORT;
+
+	pInformation->Ctrl_Info.CopyData = CopyRoutine;
+	pInformation->Ctrl_Info.Usb_wOffset = 0;
+	(*CopyRoutine)(0);
+	return USB_SUCCESS;
+}
+
+DEVICE Device_Table = {
+	EP_NUM,
+	1
+};
+
+DEVICE_PROP Device_Property = {
+	Joystick_init,
+	Joystick_Reset,
+	Joystick_Status_In,
+	Joystick_Status_Out,
+	Joystick_Data_Setup,
+	Joystick_NoData_Setup,
+	Joystick_Get_Interface_Setting,
+	Joystick_GetDeviceDescriptor,
+	Joystick_GetConfigDescriptor,
+	Joystick_GetStringDescriptor,
+	0,
+	0x40			/* MAX PACKET SIZE */
+};
+
+USER_STANDARD_REQUESTS User_Standard_Requests = {
+	Joystick_GetConfiguration,
+	Joystick_SetConfiguration,
+	Joystick_GetInterface,
+	Joystick_SetInterface,
+	Joystick_GetStatus,
+	Joystick_ClearFeature,
+	Joystick_SetEndPointFeature,
+	Joystick_SetDeviceFeature,
+	Joystick_SetDeviceAddress
+};
+
